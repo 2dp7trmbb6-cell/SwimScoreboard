@@ -6,7 +6,7 @@ import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
-from server import State, Handler, defaults
+from server import State, Handler, defaults, project, lane_points
 
 class ScoreboardTests(unittest.TestCase):
     def test_configuration_validation_and_persistence(self):
@@ -18,6 +18,37 @@ class ScoreboardTests(unittest.TestCase):
             invalid=defaults(); invalid['lanes']['1']['points']=[[0,0]]*4
             with self.assertRaises(ValueError):state.save(invalid)
             self.assertEqual(state.config,config)
+
+    def test_pool_perspective_offsets_and_validation(self):
+        with tempfile.TemporaryDirectory() as d:
+            state=State('unused',d);config=defaults();a=config['alignment']
+            a.update(usePool=True,count=4,points=[[-200,40],[1600,200],[1400,1000],[-100,900]],position=0,length=1,height=1)
+            first=lane_points(config,1);last=lane_points(config,4)
+            self.assertEqual(first[0],a['points'][0])
+            for actual,expected in zip(last[2],a['points'][2]):self.assertAlmostEqual(actual,expected)
+            self.assertAlmostEqual(first[3][0],lane_points(config,2)[0][0])
+            self.assertAlmostEqual(first[3][1],lane_points(config,2)[0][1])
+            config['lanes']['1']['offsets']=[[5,7] for _ in range(4)]
+            self.assertEqual(lane_points(config,1)[0],[first[0][0]+5,first[0][1]+7])
+            state.save(config)
+            a['reverse']=True
+            self.assertEqual(lane_points(config,4)[0],first[0])
+            state.save(config)
+            config['lanes']['1']['offsets'][0]=[9000,9000]
+            with self.assertRaises(ValueError):state.save(config)
+
+    def test_legacy_alignment_migration_preserves_positions(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            config=defaults();config.pop('alignment')
+            for lane in config['lanes'].values():lane.pop('offsets')
+            config['lanes']['2']['points']=[[-10,10],[800,30],[750,100],[-30,90]]
+            Path(d,'settings.json').write_text(json.dumps(config))
+            state=State('unused',d)
+            self.assertFalse(state.config['alignment']['usePool'])
+            self.assertEqual(state.config['lanes']['2']['points'],config['lanes']['2']['points'])
+            self.assertEqual(state.config['lanes']['2']['offsets'],[[0,0]]*4)
+            state.save(state.config)
 
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:

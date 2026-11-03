@@ -11,14 +11,50 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).parent
 
 def defaults():
-    return dict(mode='board', visible=True, autoHide=True, fields=dict(first=True,last=True,team=True,seed=True,split=True,final=True), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True) for i in range(1,9)})
+    return dict(alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, fields=dict(first=True,last=True,team=True,seed=True,split=True,final=True), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+
+def migrate(config):
+    config.setdefault('alignment',defaults()['alignment'])
+    for lane in config.get('lanes',{}).values(): lane.setdefault('offsets',[[0,0] for _ in range(4)])
+    return config
+
+def validate_coordinates(points):
+    if not isinstance(points,list) or len(points)!=4: raise ValueError('Four corners required')
+    for p in points:
+        if not isinstance(p,list) or len(p)!=2 or any(type(n) not in (int,float) or not -10000<=n<=10000 for n in p): raise ValueError('Invalid corner coordinate')
+
+def validate_quad(points):
+    validate_coordinates(points)
+    cross=[]
+    for i in range(4):
+        a,b,c=points[i],points[(i+1)%4],points[(i+2)%4]
+        cross.append((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))
+    if not (all(x>1 for x in cross) or all(x< -1 for x in cross)): raise ValueError('Corners must form a convex quadrilateral in perimeter order')
+
+def project(points,u,v):
+    a,b,c,d=points
+    dx1,dx2=b[0]-c[0],d[0]-c[0]; dy1,dy2=b[1]-c[1],d[1]-c[1]
+    sx,sy=a[0]-b[0]+c[0]-d[0],a[1]-b[1]+c[1]-d[1]
+    det=dx1*dy2-dx2*dy1
+    if abs(det)<1e-8: raise ValueError('Degenerate pool')
+    g,h=(sx*dy2-dx2*sy)/det,(dx1*sy-sx*dy1)/det
+    w=g*u+h*v+1
+    if abs(w)<1e-8: raise ValueError('Invalid pool perspective')
+    return [((b[j]-a[j]+g*b[j])*u+(d[j]-a[j]+h*d[j])*v+a[j])/w for j in range(2)]
+
+def lane_points(config,lane):
+    a=config['alignment']; n=a['count']; index=n-lane if a['reverse'] else lane-1
+    v=(index+(1-a['height'])/2)/n; bottom=v+a['height']/n
+    u=a['position']; end=u+a['length']
+    base=[project(a['points'],x,y) for x,y in [(u,v),(end,v),(end,bottom),(u,bottom)]]
+    return [[value+config['lanes'][str(lane)]['offsets'][i][j] for j,value in enumerate(p)] for i,p in enumerate(base)]
 
 class State:
     def __init__(self, manager, folder):
         self.manager = manager.rstrip('/')
         self.path = Path(folder)/'settings.json'
         self.lock = threading.Lock()
-        self.config = json.loads(self.path.read_text()) if self.path.exists() else defaults()
+        self.config = migrate(json.loads(self.path.read_text())) if self.path.exists() else defaults()
         self.snapshot = None
         self.received = 0
         self.error = 'Waiting for SwimDataManager'
@@ -42,17 +78,19 @@ class State:
         if type(config['visible']) is not bool or type(config['autoHide']) is not bool: raise ValueError('Invalid visibility')
         if set(config['fields']) != set(defaults()['fields']) or any(type(v) is not bool for v in config['fields'].values()): raise ValueError('Invalid fields')
         if set(config['lanes']) != set(defaults()['lanes']): raise ValueError('Expected lanes 1–8')
-        for lane in config['lanes'].values():
+        a=config['alignment']
+        if set(a)!=set(defaults()['alignment']): raise ValueError('Invalid alignment settings')
+        if any(type(a[k]) is not bool for k in ('active','usePool','reverse')): raise ValueError('Invalid alignment flags')
+        if type(a['count']) is not int or not 1<=a['count']<=8: raise ValueError('Pool must have 1–8 lanes')
+        for k in ('position','length','height'):
+            if type(a[k]) not in (int,float) or not 0<=a[k]<=1: raise ValueError('Invalid card placement')
+        if a['length']<.02 or a['height']<.1 or a['position']+a['length']>1: raise ValueError('Card must fit within pool length')
+        validate_quad(a['points'])
+        for key,lane in config['lanes'].items():
             if type(lane.get('enabled')) is not bool: raise ValueError('Invalid lane')
-            points=lane.get('points')
-            if not isinstance(points,list) or len(points)!=4: raise ValueError('Four corners required')
-            for p in points:
-                if not isinstance(p,list) or len(p)!=2 or any(type(n) not in (int,float) or not -10000<=n<=10000 for n in p): raise ValueError('Invalid corner coordinate')
-            cross=[]
-            for i in range(4):
-                a,b,c=points[i],points[(i+1)%4],points[(i+2)%4]
-                cross.append((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))
-            if not (all(x>1 for x in cross) or all(x< -1 for x in cross)): raise ValueError('Corners must form a convex quadrilateral in perimeter order')
+            validate_quad(lane.get('points'))
+            validate_coordinates(lane.get('offsets'))
+            if a['usePool'] and int(key)<=a['count']: validate_quad(lane_points(config,int(key)))
         with self.lock:
             self.path.parent.mkdir(parents=True,exist_ok=True)
             tmp=self.path.with_suffix('.tmp'); tmp.write_text(json.dumps(config)); tmp.replace(self.path)
