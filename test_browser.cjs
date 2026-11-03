@@ -11,7 +11,20 @@ assert.equal(await overlay.evaluate(()=>getComputedStyle(document.body).backgrou
 await page.locator('#field-first').uncheck();await overlay.waitForFunction(()=>document.querySelector('.lane-name')?.textContent==='Smith');
 await page.locator('#visible').uncheck();await overlay.waitForFunction(()=>document.querySelector('#broadcast').children.length===0);
 await page.locator('#visible').check();await page.locator('#autoHide').check();await page.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));await overlay.waitForTimeout(600);assert.equal(await overlay.locator('.lane-card').count(),0);
-await overlay.goto(base+'/overlay?format=board');await overlay.waitForSelector('table');assert.match(await overlay.locator('tbody').textContent(),/Smith/);assert.match(await overlay.locator('#notice').textContent(),/SIMULATED/);
+if(process.env.MANAGER_URL){
+const manager=process.env.MANAGER_URL;
+// Freeze a populated feed while publishing test finishes; physical serial is not needed.
+const snapshot=await (await fetch(manager+'/api/v1/state')).json();
+await fetch(manager+'/api/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'source',mode:'off'})});
+// Source reset clears event/heat; use an injected browser snapshot to exercise the exact live rendering lifecycle.
+await overlay.route('**/api/state',async route=>{const d=await (await fetch(base+'/api/state')).json();d.state=snapshot;d.error=null;d.received=Date.now()/1000;d.state.feed.clockLast=d.received;d.state.feed.connected=true;d.state.feed.raceClock='0:12.3';d.state.feed.results={session:snapshot.active,event:3,heat:2,source:'manual',lanes:{2:{finalTime:'0:58.12',place:1}}};await route.fulfill({json:d})});
+await overlay.waitForSelector('.finish-card');assert.equal(await overlay.locator('.finish-place').textContent(),'PLACE 1');
+assert.equal(await overlay.locator('.finish-card .lane-times').textContent(),'PLACE 1');
+const firstCard=await overlay.locator('.finish-card').elementHandle();await overlay.waitForTimeout(900);assert.equal(await firstCard.evaluate(el=>el.isConnected),true);
+await overlay.unroute('**/api/state');
+await fetch(manager+'/api/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'source',mode:'demo',interval:600})});
+}
+await overlay.goto(base+'/overlay?format=board');await overlay.waitForSelector('table');assert.match(await overlay.locator('tbody').textContent(),/Jamie Smith/);assert.doesNotMatch(await overlay.locator('.board').textContent(),/IN THE WATER/);assert.equal(await overlay.locator('.meet-title').textContent(),'Demo Meet - 10/25/2026');assert.ok((await overlay.locator('.board-head').boundingBox()).height<140);if(process.env.BOARD_SCREENSHOT)await overlay.screenshot({path:process.env.BOARD_SCREENSHOT});assert.match(await overlay.locator('#notice').textContent(),/SIMULATED/);
 await page.reload();await page.waitForSelector('#field-first');assert.equal(await page.locator('#field-first').isChecked(),false);assert.deepEqual(errors,[]);
 await page.locator('#alignmentMode').check();await page.locator('#usePool').check();
 await overlay.goto(base+'/overlay?format=lanes');await overlay.waitForFunction(()=>document.querySelectorAll('.alignment-card').length===8);

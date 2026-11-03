@@ -50,6 +50,18 @@ class ScoreboardTests(unittest.TestCase):
             self.assertEqual(state.config['lanes']['2']['offsets'],[[0,0]]*4)
             state.save(state.config)
 
+    def test_field_migration_and_independent_defaults(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            legacy=defaults();legacy['fields']=dict(first=False,last=True,team=False,seed=True,split=False,final=True);legacy.pop('finishPopups')
+            Path(d,'settings.json').write_text(json.dumps(legacy));state=State('unused',d)
+            self.assertFalse(state.config['fields']['board']['first']);self.assertTrue(state.config['fields']['board']['seed'])
+            self.assertTrue(state.config['fields']['lanes']['first']);self.assertTrue(state.config['fields']['lanes']['team'])
+            self.assertFalse(state.config['fields']['lanes']['seed']);self.assertFalse(state.config['fields']['lanes']['final'])
+            state.save(state.config)
+            state.config['fields']['board']['team']='yes'
+            with self.assertRaises(ValueError):state.save(state.config)
+
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:
             server=ThreadingHTTPServer(('127.0.0.1',0),Handler); server.state=State('unused',d)

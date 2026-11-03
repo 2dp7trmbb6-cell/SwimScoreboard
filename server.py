@@ -10,10 +10,19 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).parent
 
+def field_defaults():
+    return dict(board=dict(lane=True,first=True,last=True,team=True,seed=True,split=True,final=True,place=True),
+                lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=True))
+
 def defaults():
-    return dict(alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, fields=dict(first=True,last=True,team=True,seed=True,split=True,final=True), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
+    if 'board' not in config.get('fields',{}):
+        legacy=config.get('fields',{})
+        config['fields']=field_defaults()
+        config['fields']['board'].update(legacy)
+    config.setdefault('finishPopups',True)
     config.setdefault('alignment',defaults()['alignment'])
     for lane in config.get('lanes',{}).values(): lane.setdefault('offsets',[[0,0] for _ in range(4)])
     return config
@@ -75,8 +84,10 @@ class State:
             return dict(config=self.config, state=self.snapshot, received=self.received, error=self.error, now=time.time())
     def save(self, config):
         if set(config) != set(defaults()) or config['mode'] not in ('board','lanes'): raise ValueError('Invalid configuration')
-        if type(config['visible']) is not bool or type(config['autoHide']) is not bool: raise ValueError('Invalid visibility')
-        if set(config['fields']) != set(defaults()['fields']) or any(type(v) is not bool for v in config['fields'].values()): raise ValueError('Invalid fields')
+        if any(type(config[k]) is not bool for k in ('visible','autoHide','finishPopups')): raise ValueError('Invalid visibility')
+        if set(config['fields']) != {'board','lanes'}: raise ValueError('Invalid scoreboard fields')
+        for format,fields in config['fields'].items():
+            if not isinstance(fields,dict) or set(fields)!=set(field_defaults()[format]) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid fields')
         if set(config['lanes']) != set(defaults()['lanes']): raise ValueError('Expected lanes 1–8')
         a=config['alignment']
         if set(a)!=set(defaults()['alignment']): raise ValueError('Invalid alignment settings')
