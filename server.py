@@ -15,7 +15,7 @@ def field_defaults():
                 lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=True))
 
 def defaults():
-    return dict(alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
     if 'board' not in config.get('fields',{}):
@@ -23,6 +23,7 @@ def migrate(config):
         config['fields']=field_defaults()
         config['fields']['board'].update(legacy)
     config.setdefault('finishPopups',True)
+    config.setdefault('boardWidth',1760)
     config.setdefault('alignment',defaults()['alignment'])
     for lane in config.get('lanes',{}).values(): lane.setdefault('offsets',[[0,0] for _ in range(4)])
     return config
@@ -85,6 +86,7 @@ class State:
     def save(self, config):
         if set(config) != set(defaults()) or config['mode'] not in ('board','lanes'): raise ValueError('Invalid configuration')
         if any(type(config[k]) is not bool for k in ('visible','autoHide','finishPopups')): raise ValueError('Invalid visibility')
+        if type(config['boardWidth']) is not int or not 640<=config['boardWidth']<=1760: raise ValueError('Traditional scoreboard width must be 640–1760 pixels')
         if set(config['fields']) != {'board','lanes'}: raise ValueError('Invalid scoreboard fields')
         for format,fields in config['fields'].items():
             if not isinstance(fields,dict) or set(fields)!=set(field_defaults()[format]) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid fields')

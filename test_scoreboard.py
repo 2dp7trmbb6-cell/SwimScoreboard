@@ -62,6 +62,18 @@ class ScoreboardTests(unittest.TestCase):
             state.config['fields']['board']['team']='yes'
             with self.assertRaises(ValueError):state.save(state.config)
 
+    def test_board_width_validation_and_migration(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            config=defaults();config.pop('boardWidth');Path(d,'settings.json').write_text(json.dumps(config));state=State('unused',d)
+            self.assertEqual(state.config['boardWidth'],1760)
+            for width in (640,1000,1760):
+                state.config['boardWidth']=width;state.save(state.config)
+                self.assertEqual(State('unused',d).config['boardWidth'],width)
+            for width in (True,639,1761,900.5):
+                config=defaults();config['boardWidth']=width
+                with self.assertRaises(ValueError):state.save(config)
+
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:
             server=ThreadingHTTPServer(('127.0.0.1',0),Handler); server.state=State('unused',d)
