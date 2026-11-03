@@ -47,7 +47,7 @@ class ScoreboardTests(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('manager_server',manager/'server.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as settings:
             hub=module.Hub(d)
-            hub.command(dict(action='upload',html='Event 3 Girls 100 Yard Freestyle\nHeat 2 of 2 Starts at 09:00 AM\n  2  Smith, Jamie  10  WAVES'))
+            hub.command(dict(action='upload',html='Event 3 Girls 100 Yard Freestyle\nHeat 2 of 2 Starts at 09:00 AM\n  2  Smith, Jamie  10  WAVES  1:02.45Y  ______'))
             hub.command(dict(action='source',mode='demo'))
             server=ThreadingHTTPServer(('127.0.0.1',0),module.Handler);server.hub=hub;server.commands=threading.Lock()
             t=threading.Thread(target=server.serve_forever,daemon=True);t.start()
@@ -58,6 +58,7 @@ class ScoreboardTests(unittest.TestCase):
                 while (not state.snapshot or not state.snapshot['feed'].get('connected')) and time.monotonic()<deadline:time.sleep(.05)
                 data=state.get();self.assertIsNone(data['error']);self.assertEqual(data['state']['feed']['event'],3)
                 self.assertEqual(data['state']['program']['heats'][0]['swimmers'][0]['name'],'Smith, Jamie')
+                self.assertEqual(data['state']['program']['heats'][0]['swimmers'][0]['seedTime'],'1:02.45')
                 self.assertIn('swim-scoreboard',data['state']['consumers'])
                 self.assertTrue(data['state']['feed']['simulated'])
                 hub.command(dict(action='source',mode='off'))

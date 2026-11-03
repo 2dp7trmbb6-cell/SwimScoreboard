@@ -44,3 +44,6 @@ Results are displayed only while manager polling is fresh and event/heat match. 
 - Optional `node test_browser.cjs`: requires Playwright and Chromium, a scoreboard server on port 8780 connected to a simulated meet with lane 2 `Smith, Jamie` and a clock beyond 0.5 seconds. Uses temporary/test settings only: this test changes visibility and field selections. Browser validation was not executed successfully here because the Chromium download domain was denied.
 
 Physical serial/OBS capture and camera alignment require venue acceptance testing.
+
+
+If seed times show —, check the seed status under swimmer details, enable **Seed time**, and use **Update report** in the manager to re-import sessions saved before seed support. Restart the updated manager first. Manager session counts distinguish timed seeds, NT, and missing values. An older stored program cannot reconstruct seed values discarded during its original import.
