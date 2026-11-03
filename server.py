@@ -1,4 +1,5 @@
 """Local scoreboard controller and read-only SwimDataManager consumer."""
+import hashlib
 import argparse
 import json
 import threading
@@ -9,6 +10,10 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).parent
+APP_VERSION=hashlib.sha256(b''.join((ROOT/'static'/name).read_bytes() for name in ('app.js','style.css','index.html','overlay.html'))).hexdigest()[:12]
+
+def config_revision(config):
+    return hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()[:12]
 
 def field_defaults():
     return dict(board=dict(lane=True,first=True,last=True,team=True,seed=True,split=True,final=True,place=True),
@@ -82,7 +87,7 @@ class State:
             self.stop.wait(.4)
     def get(self):
         with self.lock:
-            return dict(config=self.config, state=self.snapshot, received=self.received, error=self.error, now=time.time())
+            return dict(appVersion=APP_VERSION,configRevision=config_revision(self.config),config=self.config, state=self.snapshot, received=self.received, error=self.error, now=time.time())
     def save(self, config):
         if set(config) != set(defaults()) or config['mode'] not in ('board','lanes'): raise ValueError('Invalid configuration')
         if any(type(config[k]) is not bool for k in ('visible','autoHide','finishPopups')): raise ValueError('Invalid visibility')
@@ -121,7 +126,9 @@ class Handler(BaseHTTPRequestHandler):
         if path not in files: return self.send(404,dict(error='Not found'))
         file=ROOT/'static'/files[path]
         kind={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript'}[file.suffix]
-        self.send(200,file.read_bytes(),kind)
+        body=file.read_bytes()
+        if path=='/app.js':body=body.replace(b'__APP_VERSION__',APP_VERSION.encode())
+        self.send(200,body,kind)
     def do_POST(self):
         if self.path!='/api/config': return self.send(404,dict(error='Not found'))
         if self.client_address[0] not in ('127.0.0.1','::1'): return self.send(403,dict(error='Control this scoreboard on its own computer'))
@@ -129,7 +136,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             size=int(self.headers.get('Content-Length',0))
             if not 0<size<50000: raise ValueError('Invalid request size')
-            config=json.loads(self.rfile.read(size)); self.server.state.save(config); self.send(200,dict(ok=True))
+            config=json.loads(self.rfile.read(size)); self.server.state.save(config); self.send(200,dict(ok=True,configRevision=config_revision(config)))
         except (ValueError,TypeError,KeyError,AttributeError) as e: self.send(400,dict(error=str(e)))
 
 def main():

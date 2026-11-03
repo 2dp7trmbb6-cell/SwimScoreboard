@@ -61,3 +61,14 @@ Physical serial/OBS capture and camera alignment require venue acceptance testin
 
 
 If seed times show —, check the seed status under swimmer details, enable **Seed time**, and use **Update report** in the manager to re-import sessions saved before seed support. Restart the updated manager first. Manager session counts distinguish timed seeds, NT, and missing values. An older stored program cannot reconstruct seed values discarded during its original import.
+
+
+## OBS live updates and troubleshooting
+
+Use a **Browser Source** with **Local file unchecked**. Traditional output is `/overlay?format=board`; pool perspective and lane alignment affect `/overlay?format=lanes` only. Both URLs must point to the same scoreboard server you control in the dashboard. If OBS is on another computer, `127.0.0.1` points to that computer, so use the scoreboard server's LAN address instead.
+
+After pulling an update, restart the scoreboard server and click **Refresh cache of current page** once in OBS source properties. Existing sources loaded before automatic version checks need that initial refresh. New output pages reload themselves when a later server build changes. Live data/settings requests bypass caching and time out after 2.5 seconds, then retry; an unresolved request no longer blocks all subsequent polls. Rendering errors display their actual reason instead of being mislabeled as a disconnected server. Array `.at` and `Object.hasOwn` dependencies were removed for older embedded browser engines; very old OBS releases that lack optional-chaining support still require upgrading OBS.
+
+The dashboard's OBS section shows the most recent sync time, server host, and settings revision. Temporarily append `&debug=1` to the OBS output URL to display the same revision/time there. They should track the dashboard after a save. Remove that parameter before going on air. A changing sync time with “Manager offline” means the source is connected to the scoreboard but its manager connection needs attention. Idle dashboard tabs also pick up configuration saved by another controller; unsaved/in-progress edits are preserved.
+
+`SMOKE_SCRIPT=test_obs_sync.cjs python browser_smoke.py` (shell syntax shown for macOS/Linux) runs disposable browser checks for meet/report changes in already-open outputs, corner-angle changes, multiple controllers, older-engine feature compatibility, stalled-request recovery, and app-version reloads. No live meet data is used.

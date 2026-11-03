@@ -82,10 +82,15 @@ class ScoreboardTests(unittest.TestCase):
             try:
                 for path in ['/', '/overlay?format=lanes','/app.js','/style.css']:
                     with urllib.request.urlopen(base+path) as r:self.assertEqual(r.status,200)
+                with urllib.request.urlopen(base+'/api/state') as r:initial=json.load(r)
+                with urllib.request.urlopen(base+'/app.js') as r:
+                    self.assertEqual(r.headers['Cache-Control'],'no-store')
+                    self.assertIn("const CLIENT_VERSION='"+initial['appVersion']+"';",r.read().decode())
                 cfg=defaults();cfg['visible']=False
                 req=urllib.request.Request(base+'/api/config',data=json.dumps(cfg).encode(),headers={'Content-Type':'application/json'})
                 with urllib.request.urlopen(req) as r:self.assertTrue(json.load(r)['ok'])
-                with urllib.request.urlopen(base+'/api/state') as r:self.assertFalse(json.load(r)['config']['visible'])
+                with urllib.request.urlopen(base+'/api/state') as r:updated=json.load(r)
+                self.assertFalse(updated['config']['visible']);self.assertNotEqual(initial['configRevision'],updated['configRevision'])
                 req.add_header('Origin','http://other.example')
                 with self.assertRaises(urllib.error.HTTPError) as caught:urllib.request.urlopen(req)
                 self.assertEqual(caught.exception.code,403)

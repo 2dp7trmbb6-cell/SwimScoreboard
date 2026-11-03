@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory() as data,tempfile.TemporaryDirectory() as sett
     threads=[threading.Thread(target=f,daemon=True) for f in (ms.serve_forever,ss.serve_forever,state.poll)]
     for thread in threads:thread.start()
     try:
-        result=subprocess.run(['node','test_browser.cjs'],cwd=ROOT,env={**os.environ,'SCOREBOARD_URL':f'http://127.0.0.1:{ss.server_port}','MANAGER_URL':f'http://127.0.0.1:{ms.server_port}'})
+        result=subprocess.run(['node',os.environ.get('SMOKE_SCRIPT','test_browser.cjs')],cwd=ROOT,env={**os.environ,'SCOREBOARD_URL':f'http://127.0.0.1:{ss.server_port}','MANAGER_URL':f'http://127.0.0.1:{ms.server_port}'})
     finally:
         state.stop.set();hub.stop.set();ss.shutdown();ms.shutdown();ss.server_close();ms.server_close()
         for thread in threads:thread.join(3)
