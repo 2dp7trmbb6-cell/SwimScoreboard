@@ -119,7 +119,7 @@ class State:
         for key in ('startDelay','startDuration','startHideDelay','splitDelay','splitDuration','finishDelay','finishDuration'):
             if type(phases[key]) not in (int,float) or not 0<=phases[key]<=600: raise ValueError('Lane overlay timing must be 0–600 seconds')
         if phases['splitDuration']<=0: raise ValueError('Split duration must be greater than zero')
-        if type(phases['timeSize']) is not int or not 18<=phases['timeSize']<=64: raise ValueError('Upright time size must be 18–64 pixels')
+        if type(phases['timeSize']) is not int or not 18<=phases['timeSize']<=64: raise ValueError('Time size must be 18–64 pixels before alignment')
         compact=config['compact']
         if not isinstance(compact,dict) or set(compact)!=set(compact_defaults()): raise ValueError('Invalid condensed layout')
         for k in ('initials','showHeader','showResults'):
