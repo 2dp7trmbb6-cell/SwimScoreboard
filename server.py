@@ -17,16 +17,22 @@ def config_revision(config):
 
 def field_defaults():
     return dict(board=dict(lane=True,first=True,last=True,team=True,seed=True,split=True,final=True,place=True),
-                lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=True))
+                lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=True),
+                compact=dict(lane=True,first=True,last=True,team=True,seed=False,split=True,final=True,place=False))
+
+def compact_defaults():
+    return dict(headerX=880,headerY=16,headerWidth=1024,resultsX=1280,resultsBottom=16,resultsWidth=624,rowHeight=32,initials=True,showHeader=True,showResults=True)
 
 def defaults():
-    return dict(boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
     if 'board' not in config.get('fields',{}):
         legacy=config.get('fields',{})
         config['fields']=field_defaults()
         config['fields']['board'].update(legacy)
+    config['fields'].setdefault('compact',field_defaults()['compact'])
+    config.setdefault('compact',compact_defaults())
     config.setdefault('finishPopups',True)
     config.setdefault('boardWidth',1760)
     config.setdefault('alignment',defaults()['alignment'])
@@ -89,12 +95,22 @@ class State:
         with self.lock:
             return dict(appVersion=APP_VERSION,configRevision=config_revision(self.config),config=self.config, state=self.snapshot, received=self.received, error=self.error, now=time.time())
     def save(self, config):
-        if set(config) != set(defaults()) or config['mode'] not in ('board','lanes'): raise ValueError('Invalid configuration')
+        if set(config) != set(defaults()) or config['mode'] not in ('board','lanes','compact'): raise ValueError('Invalid configuration')
         if any(type(config[k]) is not bool for k in ('visible','autoHide','finishPopups')): raise ValueError('Invalid visibility')
         if type(config['boardWidth']) is not int or not 640<=config['boardWidth']<=1760: raise ValueError('Traditional scoreboard width must be 640–1760 pixels')
-        if set(config['fields']) != {'board','lanes'}: raise ValueError('Invalid scoreboard fields')
+        if set(config['fields']) != {'board','lanes','compact'}: raise ValueError('Invalid scoreboard fields')
         for format,fields in config['fields'].items():
             if not isinstance(fields,dict) or set(fields)!=set(field_defaults()[format]) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid fields')
+        compact=config['compact']
+        if not isinstance(compact,dict) or set(compact)!=set(compact_defaults()): raise ValueError('Invalid condensed layout')
+        for k in ('initials','showHeader','showResults'):
+            if type(compact[k]) is not bool: raise ValueError('Invalid condensed display flag')
+        for k in ('headerX','headerY','resultsX','resultsBottom','headerWidth','resultsWidth','rowHeight'):
+            if type(compact[k]) is not int: raise ValueError('Condensed layout coordinates must be integers')
+        if not 0<=compact['headerX']<=1920 or not 0<=compact['resultsX']<=1920 or not 0<=compact['headerY']<=900 or not 0<=compact['resultsBottom']<=500: raise ValueError('Condensed panels must fit the video canvas')
+        for prefix in ('header','results'):
+            if not 320<=compact[prefix+'Width']<=1920 or compact[prefix+'X']+compact[prefix+'Width']>1920: raise ValueError('Panel width extends beyond the 1920 pixel canvas')
+        if not 24<=compact['rowHeight']<=48: raise ValueError('Condensed rows must be 24–48 pixels tall')
         if set(config['lanes']) != set(defaults()['lanes']): raise ValueError('Expected lanes 1–8')
         a=config['alignment']
         if set(a)!=set(defaults()['alignment']): raise ValueError('Invalid alignment settings')

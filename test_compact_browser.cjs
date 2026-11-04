@@ -1,0 +1,16 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),headless:true,args:['--no-sandbox']});try{
+const context=await browser.newContext({viewport:{width:1920,height:1080}}),base=process.env.SCOREBOARD_URL;
+const control=await context.newPage();await control.goto(base);await control.waitForSelector('#mode');await control.locator('#mode').selectOption('compact');assert.equal(await control.locator('#fieldFormat').inputValue(),'compact');assert.equal(await control.locator('#field-seed').isChecked(),false);assert.equal(await control.locator('#compactUrl').inputValue(),base+'/overlay?format=compact');
+const overlay=await context.newPage(),errors=[];overlay.on('pageerror',e=>errors.push(e.message));
+await overlay.route('**/api/state',async route=>{const d=await(await fetch(base+'/api/state')).json();d.state.program.heats[0].swimmers=Array.from({length:8},(_,i)=>({lane:String(i+1),name:['Stein, Everly','Marsh, Lila','Holtz, Sophia','Young, Ashley','Slonaker, Grace','Smith, Julia','Gregware, Everly','Jones, Taylor'][i],team:i%2?'WAT':'AYST',seedTime:'1:02.45'}));d.state.feed.results={event:3,heat:2,lanes:Object.fromEntries(Array.from({length:8},(_,i)=>[String(i+1),{splits:['0:28.31'],finalTime:i%2?'0:59.42':null}]))};await route.fulfill({json:d})});
+await overlay.goto(base+'/overlay?format=compact');await overlay.waitForSelector('.compact-header');await overlay.waitForFunction(()=>document.querySelectorAll('tbody tr').length===8);
+assert.match(await overlay.locator('tbody').textContent(),/STEIN, E\./);assert.doesNotMatch(await overlay.locator('thead').textContent(),/SEED/);
+const header=await overlay.locator('.compact-header').boundingBox(),results=await overlay.locator('.compact-results').boundingBox();assert.ok(header.x>=850&&header.width<=1050&&header.height<140);assert.ok(results.x>=1200&&results.width<=650&&results.height<=310);assert.ok(results.y>700&&results.y+results.height<=1080);assert.ok(results.y-header.y-header.height>500);
+for(const panel of ['.compact-header','.compact-results'])assert.ok(await overlay.locator(panel).evaluate(e=>e.scrollWidth<=e.clientWidth));
+if(process.env.COMPACT_SCREENSHOT)await overlay.screenshot({path:process.env.COMPACT_SCREENSHOT,omitBackground:true});
+await control.locator('summary').filter({hasText:'Panel positions'}).click();await control.locator('#compact-resultsWidth').fill('560');await control.locator('#compact-resultsWidth').dispatchEvent('change');await overlay.waitForFunction(()=>Math.round(document.querySelector('.compact-results').getBoundingClientRect().width)===560);
+await control.locator('#compact-showHeader').uncheck();await overlay.waitForFunction(()=>!document.querySelector('.compact-header'));await control.locator('#compact-showHeader').check();
+await control.locator('#field-final').uncheck();await overlay.waitForFunction(()=>!document.querySelector('thead').textContent.includes('FINAL'));
+assert.deepEqual(errors,[]);console.log('Condensed browser checks passed: independent fields, 8-lane fit, transparent gap, names, live resize and header toggles.');
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

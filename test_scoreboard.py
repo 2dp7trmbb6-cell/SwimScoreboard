@@ -74,6 +74,18 @@ class ScoreboardTests(unittest.TestCase):
                 config=defaults();config['boardWidth']=width
                 with self.assertRaises(ValueError):state.save(config)
 
+    def test_compact_migration_defaults_validation_and_persistence(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            legacy=defaults();legacy.pop('compact');legacy['fields'].pop('compact');Path(d,'settings.json').write_text(json.dumps(legacy))
+            state=State('unused',d);self.assertEqual(state.config['compact']['resultsWidth'],624)
+            self.assertTrue(state.config['fields']['compact']['split']);self.assertFalse(state.config['fields']['compact']['seed'])
+            state.config['mode']='compact';state.config['compact']['headerX']=700;state.save(state.config)
+            restored=State('unused',d);self.assertEqual(restored.config['mode'],'compact');self.assertEqual(restored.config['compact']['headerX'],700)
+            for key,value in [('headerX',1900),('resultsWidth',1000),('rowHeight',1),('headerY',True),('initials','yes')]:
+                config=defaults();config['compact'][key]=value
+                with self.assertRaises(ValueError):state.save(config)
+
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:
             server=ThreadingHTTPServer(('127.0.0.1',0),Handler); server.state=State('unused',d)
