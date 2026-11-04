@@ -79,3 +79,12 @@ After pulling an update, restart the scoreboard server and click **Refresh cache
 The dashboard's OBS section shows the most recent sync time, server host, and settings revision. Temporarily append `&debug=1` to the OBS output URL to display the same revision/time there. They should track the dashboard after a save. Remove that parameter before going on air. A changing sync time with “Manager offline” means the source is connected to the scoreboard but its manager connection needs attention. Idle dashboard tabs also pick up configuration saved by another controller; unsaved/in-progress edits are preserved.
 
 `SMOKE_SCRIPT=test_obs_sync.cjs python browser_smoke.py` (shell syntax shown for macOS/Linux) runs disposable browser checks for meet/report changes in already-open outputs, corner-angle changes, multiple controllers, older-engine feature compatibility, stalled-request recovery, and app-version reloads. No live meet data is used.
+
+
+### Reserved rows for unused lanes
+
+Traditional and condensed tables reserve one row per lane. An unused lane keeps its slot and striping with every cell blank, including lane number and times. Rows use a consistent single-line height so sparse heats do not shrink the table; long traditional names are ellipsized with their full value in the browser tooltip. Lane overlays continue to show occupied lanes only.
+
+Set **Pool lane count (reserves rows on both boards)** under Output controls to the physical pool size; this is shared with Pool alignment's lane count. Both tables also retain any higher lane numbers found anywhere in the active session, even when the current heat does not use them. Sessions containing lane 0 reserve its slot too. This keeps row positions stable as heats advance and also leaves a blank table while waiting for a matching heat. Condensed row height remains configurable in its panel settings.
+
+`SMOKE_SCRIPT=test_fixed_rows_browser.cjs python browser_smoke.py` checks empty-cell content and equal panel/row heights before and after removing swimmers, using temporary data.
