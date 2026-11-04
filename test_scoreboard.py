@@ -86,6 +86,20 @@ class ScoreboardTests(unittest.TestCase):
                 config=defaults();config['compact'][key]=value
                 with self.assertRaises(ValueError):state.save(config)
 
+    def test_lane_phase_migration_and_validation(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            config=defaults();config.pop('lanePhases');config['fields']['lanes']['first']=False
+            Path(d,'settings.json').write_text(json.dumps(config));state=State('unused',d)
+            self.assertFalse(state.config['fields']['lanes']['first']);self.assertFalse(state.config['lanePhases']['finishFields']['first'])
+            self.assertTrue(state.config['lanePhases']['finishFields']['final']);self.assertTrue(state.config['lanePhases']['splitFields']['split'])
+            state.save(state.config)
+            for key,value in [('splitDuration',0),('finishDelay',-1),('startDuration',601),('finishDuration',float('nan')),('timeSize',17),('startEnabled','yes')]:
+                invalid=defaults();invalid['lanePhases'][key]=value
+                with self.assertRaises(ValueError):state.save(invalid)
+            invalid=defaults();invalid['lanePhases']['finishFields']['final']='yes'
+            with self.assertRaises(ValueError):state.save(invalid)
+
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:
             server=ThreadingHTTPServer(('127.0.0.1',0),Handler); server.state=State('unused',d)

@@ -20,9 +20,11 @@ Add a **Browser Source**, width **1920**, height **1080**, using one of:
 
 Use the URLs shown in the control dashboard. OBS and the scoreboard normally run on the same computer. Source background is transparent, with opaque translucent cards for readability; preview checkerboard is not in the output. Keep OBS Browser Source background transparent and reset source transforms before alignment. If OBS is on another trusted LAN machine, bind with `--host 0.0.0.0`, allow private firewall port 8780 and use the scoreboard computer's LAN IP. Controls remain local-only. This is a trusted-LAN application without authentication; do not publish its port to the Internet.
 
-Under **Choose what goes on air**, select **Traditional scoreboard**, **Lane overlay**, or **Condensed broadcast**, then configure lane number, first/last name, team, seed, split, final time, and heat placement independently. Existing shared selections migrate to the traditional scoreboard; lane overlays start with lane/name/team only, plus placement on finish popups. The compact traditional header leads with a larger meet title, with event/heat and race description underneath. It no longer includes “In the water”. The preview-format selector also selects that format's field controls, but explicit OBS source URLs keep their format. Show output controls both formats.
+Under **Choose what goes on air**, select **Traditional scoreboard**, **Lane overlay**, or **Condensed broadcast**, then configure lane number, first/last name, team, seed, split, final time, and heat placement independently. Existing shared selections migrate to the traditional scoreboard; lane overlays start with lane/name/team only, plus placement on finish popups. The compact traditional header leads with a larger meet title, with event/heat and race description underneath. It no longer includes “In the water”. The preview-format selector also selects that format's field controls, but explicit OBS source URLs keep their format. Show output controls all formats. For lane overlays, select Start, Split received, or Finish in the state selector to configure each independently.
 
-**Show lane finish popups until next heat** is enabled by default. A lane's final time brings its card back while unfinished lanes stay hidden during the race. Placement appears in the large left-hand number position, replacing the lane number on finished cards. The right-side PLACE label is removed. If placement is unknown, the number position shows — and the popup says **FINISHED**. Disable Heat placement for lane overlays to hide that number entirely. Final time is included only if enabled for the lane overlay. A popup stays until session, event, or heat changes, including after the race clock stops or manager data becomes stale. Held results keep their manual/simulation labels. Show output can hide them at any time; disable finish popups to restore normal lane-card behavior. OBS browser refresh clears the local hold, which is rebuilt from current manager results when available. Physical CTS lane results still require a verified adapter or manual entry.
+**Enable finish overlays** is enabled by default. A lane's final time brings its finish card back while other lanes follow their own start/split states. Placement appears in the large left-hand number position; missing placement shows — and FINISHED. Each phase has its own fields: start defaults to lane/name/team, split defaults to those fields plus latest split, and finish defaults to name/team/place/final time. Existing start selections and alignment are preserved during migration. Finish fields can optionally include the lane number as supplementary text; it never replaces the large placement number.
+
+Finish timing defaults to immediate appearance and holding until session/event/heat advances. It can instead expire after a configured number of seconds. A stopped clock or temporary loss of manager results does not reset an observed finish window. Corrections update the value/place without restarting its timer. Show output can hide all states at any time. OBS source refresh restarts its locally observed timers; current manager values are observed again on reload. Physical CTS split/final data still requires a verified adapter or manual entry; this change does not alter Data Manager decoding.
 
 Popups use heat placement, not rankings across multiple heats. Manager placement can be explicitly entered for a finished lane or calculated once every occupied lane has a final time. Incomplete results never imply first place. A subtle fade plays once when a lane finishes; corrections update the card without replaying the entrance.
 
@@ -44,7 +46,7 @@ For pool alignment, enable **Alignment mode** in the dashboard. Every enabled la
 
 Coordinates may range from −10000 to 10000. Invalid/crossing quadrilaterals are rejected; the save status reports any server-side failure. Existing saved manual alignment remains unchanged until you opt into pool geometry. Disable unused lane cards with Include lane; only lanes within the selected pool count are shown in pool mode. Settings persist on the scoreboard server; the temporary reference image does not. Reset OBS source transforms before alignment, and recalibrate after moving the camera or altering scene transforms.
 
-Automatic hiding latches for lane cards once a fresh, connected clock exceeds 0.5 seconds. Unfinished lanes stay hidden if the clock stops or becomes stale, while finish popups remain visible. Advancing the session/event/heat resets that state. For a re-swim of the same heat, turn automatic hiding off to show the pre-race cards manually. No explicit race-start signal exists in the current API. Simulation and disconnections are labeled; race clocks are withheld when stale.
+Start hiding is anchored to the first fresh, connected race-clock reading and the configurable hide-after-start grace (default 0.5 seconds). Once the race has started, stopping/staling the clock does not bring start cards back. Session/event/heat advance resets the phase state. For a re-swim in the same heat, turn automatic start hiding off to show cards manually. No explicit race-start signal exists in the current API. Simulation and disconnections are labeled; race clocks are withheld when stale.
 
 ## Timing availability and optional API extension
 
@@ -88,3 +90,26 @@ Traditional and condensed tables reserve one row per lane. An unused lane keeps 
 Set **Pool lane count (reserves rows on both boards)** under Output controls to the physical pool size; this is shared with Pool alignment's lane count. Both tables also retain any higher lane numbers found anywhere in the active session, even when the current heat does not use them. Sessions containing lane 0 reserve its slot too. This keeps row positions stable as heats advance and also leaves a blank table while waiting for a matching heat. Condensed row height remains configurable in its panel settings.
 
 `SMOKE_SCRIPT=test_fixed_rows_browser.cjs python browser_smoke.py` checks empty-cell content and equal panel/row heights before and after removing swimmers, using temporary data.
+
+
+### Lane overlay phases and delays
+
+Select **Lane overlay** under display fields, then choose **Start / pre-race**, **Split received**, or **Finish / final result**. Each selection has its own lane/name/team/seed/split/final/placement switches. Lane-overlay timing controls are separate from traditional/condensed fields.
+
+| Control | Default | Meaning |
+| --- | --- | --- |
+| Start delay | 0 s | Wait after a matching heat first appears |
+| Start duration | 0 | Hold until race starts; positive values set a maximum show time |
+| Hide start after race clock reaches | 0.5 s | Grace after the race starts, when automatic hiding is enabled |
+| Split delay | 0 s | Wait after a new cumulative split is observed for a lane |
+| Split duration | 5 s | How long that split card stays visible |
+| Finish delay | 0 s | Wait after the lane's final time is first observed |
+| Finish duration | 0 | Hold until next session/event/heat; positive values expire the card |
+
+Timings allow up to 600 seconds. Split duration must be positive. Each lane operates independently. A final suppresses the split/start states immediately, including while its finish appearance is delayed or after its display expires. Repeated polling of the same split/final does not restart a window; a new split count/value creates a new split window. Windows keep elapsing while Show output is off. Alignment mode still shows all enabled lane placeholders without timing requirements.
+
+**Upright split/final time near the wide end** is enabled by default. The background and swimmer details keep their perspective alignment, while the primary time is drawn as a high-contrast screen-space badge near the wide end, below the identity text. The time remains horizontal and does not shrink into the narrow far tip. Adjust its maximum size (18–64 pixels, default 36); far cards have a 16-pixel readability floor. Turn this off to use perspective text inside the card. The field for that time must be enabled in the selected phase.
+
+Running clocks in the traditional, condensed, and control views now render tenths between manager polls using bounded interpolation. They resynchronize to each received CTS reading, freeze on repeated stopped readings, and reset/hide on a reset/stale clock. Extrapolation is capped at half a second; split/final values are never interpolated or changed.
+
+Validation: `node test_phases.cjs` covers phase precedence, fields, delays, expiry, duplicate split suppression, heat reset, and clock interpolation. `SMOKE_SCRIPT=test_phases_browser.cjs python browser_smoke.py` exercises the real controls and strongly skewed geometry with temporary test data (macOS/Linux shell syntax).
