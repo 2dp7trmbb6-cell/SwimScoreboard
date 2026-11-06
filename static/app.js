@@ -123,7 +123,7 @@ if(cfg.boardPhases?.[format]){
 }
 rows=fixedLaneRows(rows,s.program,cfg);
 const relayHeat=/\brelay\b/i.test(heat?.title||'')||rows.some(r=>r.relay),columns=['team','seed','split','final','place'].filter(k=>tableFields[k]&&!(relayHeat&&k==='team')),showName=tableFields.first||tableFields.last||(relayHeat&&tableFields.team);
-if(cfg.personalBestBoards?.[format])columns.splice(columns.includes('final')?columns.indexOf('final')+1:columns.length,0,'pb');
+if(cfg.personalBestBoards?.[format]&&rows.some(r=>r.phase==='finish'||(!cfg.boardPhases?.[format]&&r.finish)))columns.push('pb');
 const layout=tableLayout(rows,tableFields,showName,columns,format,cfg),colgroup=layout.widths.map(w=>`<col style="width:${w}px">`).join('');
 if(format==='compact'){
 const c=cfg.compact,labelsShort={team:'TEAM',seed:'SEED',split:'SPLIT',final:'FINAL',place:'PLC',pb:'PB / UNOFFICIAL'};
@@ -155,6 +155,7 @@ function updateMockPreview(){if(!cfg||typeof window==='undefined')return;const f
 function editFields(){const format=editingFormat(),phase=$('lanePhase').value,fields=phaseFields(cfg,phase,format);
 const names={board:'Traditional scoreboard',compact:'Condensed broadcast',lanes:'Pool lane overlays'};
 $('formatTitle').textContent=names[format];
+$('finishPBControls').hidden=format==='lanes'||phase!=='finish';
 $('formatDescription').textContent=format==='lanes'?'Perspective cards over the pool. Each lane has independent start, split and finish windows.':'Always-visible scoreboard. Columns follow pre-race, racing and finished content; racing and finished swimmers can share the same table.';
 $('phaseDescription').textContent=`Editing ${names[format]} · ${phase==='start'?'Start / pre-race':phase==='split'?'Split received':'Finish / final result'}. These fields affect only this format and state.`;
 document.querySelectorAll('[data-format]').forEach(el=>el.hidden=!el.dataset.format.split(' ').includes(format));

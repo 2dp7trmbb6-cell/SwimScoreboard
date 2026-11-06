@@ -15,9 +15,9 @@ finalTime='58.42';await page.waitForSelector('.personal-best');await control.loc
 await control.reload();assert.equal(await control.locator('#phase-personalBest').isChecked(),false);
 // Check both independent scoreboard controls with the same final and seed.
 for(const format of ['board','compact']){
- await control.locator('#mode').selectOption(format);await control.locator('#pb-'+format).check();await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
+ await control.locator('#mode').selectOption(format);for(const phase of ['start','split']){await control.locator('#lanePhase').selectOption(phase);assert.equal(await control.locator('#pb-'+format).isVisible(),false)}await control.locator('#lanePhase').selectOption('finish');assert.equal(await control.locator('#pb-'+format).isVisible(),true);await control.locator('#pb-'+format).check();await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
  const board=await context.newPage();await board.route('**/api/state',async route=>{const d=await(await fetch(base+'/api/state')).json(),now=Date.now()/1000;d.received=d.now=now;d.error=null;d.state.program.heats=[{event:3,heat:2,title:'Freestyle',swimmers:[{lane:2,name:'Smith, Jamie',team:'AYST',seedTime:'1:02.00'}]}];d.state.feed={event:3,heat:2,connected:true,clockLast:now,results:{event:3,heat:2,lanes:{2:{finalTime:'58.42',place:1}}}};await route.fulfill({json:d})});
- await board.goto(base+'/overlay?format='+format);await board.waitForSelector('.pb-cell .personal-best');
+ await board.goto(base+'/overlay?format='+format);await board.waitForSelector('.pb-cell .personal-best');assert.equal(await board.locator('thead th').last().textContent(),'PB / UNOFFICIAL');
  assert.equal(await board.locator('.pb-cell .personal-best img').evaluate(i=>i.complete&&i.naturalWidth>0),true);
  assert.equal(await board.locator('.unused-lane .personal-best').count(),0);
  await board.waitForTimeout(800);assert.equal(await board.locator('.pb-new').count(),0);

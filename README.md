@@ -134,7 +134,7 @@ This is a seed comparison, not a verified lifetime personal record. Ties, zero/m
 
 See `AGENTS.md` for the repository map, setup, startup and validation commands used by coding agents in new sessions.
 
-Traditional and condensed scoreboards each have an independent **Personal Best badges** toggle under **Output controls**, off by default. Enabling it reserves a PB / UNOFFICIAL column beside the final time (or after other selected columns when final time is hidden). Blank lanes retain empty cells. These boards use current matching results only; unavailable/stale results remove their badges. The lane finish badge stays grouped next to the swimmer details and time rather than the far card edge.
+Traditional and condensed scoreboards each have an independent **Personal Best badges** toggle under **Output controls**, off by default. Enable it in the Finish / final result field settings. A PB / UNOFFICIAL column appears only when finish-state rows are present and is always the last column; racing rows leave it blank in mixed tables. Blank lanes retain empty cells. These boards use current matching results only; unavailable/stale results remove their badges. The lane finish badge stays grouped next to the swimmer details and time rather than the far card edge.
 
 ### Scoreboard controls and race phases
 
@@ -155,3 +155,5 @@ Timing columns reserve enough width for all displayed digits and never use ellip
 Table phase visibility/delay/duration timers from the earlier controls are retired during migration; existing start/split/finish field choices and PB options are retained. Lane overlays keep their independent popup timing and alignment controls.
 
 Validation: `SMOKE_SCRIPT=test_controls_browser.cjs python browser_smoke.py` exercises always-visible racing content before the first split, mixed finishes, retained finals, a five-second heat-change hold, mock previews, narrow timing columns, shared lane count and saved field selections.
+
+Personal Best controls for traditional and condensed scoreboards belong to **Fields by race phase → Finish / final result**. They never add a column to pre-race or racing-only tables.
