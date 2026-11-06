@@ -41,3 +41,8 @@ fieldset{min-width:0;margin:20px 0;padding:4px 14px 12px;border:1px solid #38617
 
 .phase-summary,.phase-timing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.phase-timing-grid fieldset{margin:0}.phase-timing-grid{margin-top:20px}.format-editor .fields{grid-template-columns:repeat(4,minmax(0,1fr))}.format-editor #mode,.format-editor #lanePhase,.format-editor #boardWidth{max-width:420px}.format-editor .format-layout label:has(input[type=number]){max-width:420px}.layout>div{min-width:0}
 @media(max-width:1200px){.phase-summary,.phase-timing-grid{grid-template-columns:1fr}.format-editor .fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Timing columns reserve enough space for every digit; names may ellipsize. */
+.board td.time-cell,.compact-results td.time-cell{font-size:var(--table-time-font);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip;padding-left:6px;padding-right:6px;letter-spacing:0}
+
+.mock-config,.table-lifecycle{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}.mock-preview{height:240px;overflow:hidden;background:repeating-conic-gradient(#182932 0% 25%,#203640 0% 50%) 0 0/24px 24px;border:1px solid var(--line);border-radius:6px}.mock-config select{max-width:420px}.mock-output .board{left:0!important;top:0!important}.mock-output .board-head,.mock-output .board footer,.mock-output .compact-header,.mock-output #notice{display:none}.mock-output .compact-results{left:0!important;top:0!important;bottom:auto!important}

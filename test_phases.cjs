@@ -32,21 +32,19 @@ f.data.state.feed.results.lanes[2].finalTime='58.42';f.render();f.data.error='of
 f.data.state.feed.heat=3;assert.doesNotMatch(f.render(),/class="personal-best"/);
 });
 
-for(const format of ['board','compact'])test(format+' rows have independent phase fields, delays, expiry and blank reserved slots',()=>{
-const f=fixture(format),cfg=f.data.config;
-cfg.fields[format]={...cfg.fields.lanes};
-cfg.boardPhases={[format]:{...cfg.lanePhases,finishEnabled:true,autoHide:false,splitDelay:1,splitDuration:2,finishDelay:1,finishDuration:2}};
-const o=cfg.boardPhases[format];o.splitFields={...cfg.fields[format],first:false,split:true};o.finishFields={...cfg.fields[format],first:false,last:false,final:true,lane:false};
-cfg.compact={showHeader:false,showResults:true,resultsX:0,resultsBottom:0,resultsWidth:624,rowHeight:32,initials:false};
-cfg.lanes[3]=cfg.lanes[2];f.data.state.program.heats[0].swimmers.push({lane:3,name:'Jones, Taylor',team:'SHARKS'});
-assert.match(f.render(),/Jamie Smith/);
-f.data.state.feed.results={event:3,heat:2,lanes:{2:{splits:['28.31']}}};
-assert.match(f.render(),/Jamie Smith/);assert.match(f.render(),/Taylor Jones/);
-f.at(1);assert.match(f.render(),/data-phase="split"/);assert.match(f.render(),/28.31/);assert.doesNotMatch(f.render(),/Jamie/);
-f.at(3);assert.match(f.render(),/Jamie Smith/); // split expired: configured start state resumes
-f.data.state.feed.results.lanes[2].finalTime='58.42';assert.doesNotMatch(f.render(),/58.42/);
-f.at(4);const html=f.render();assert.match(html,/data-lane-slot="2" data-phase="finish"/);assert.match(html,/58.42/);assert.doesNotMatch(html,/Jamie Smith/);assert.match(html,/Taylor Jones/);
-f.at(6);assert.doesNotMatch(f.render(),/58.42/);assert.match(f.render(),/data-lane-slot="2" data-phase="" class="unused-lane"/);
-o.finishDuration=0;assert.match(f.render(),/58.42/);o.finishEnabled=false;assert.doesNotMatch(f.render(),/58.42/);
-f.data.state.feed.heat=3;assert.doesNotMatch(f.render(),/58.42/);
+
+for(const format of ['board','compact'])test(format+' stays populated through pre-race, racing, mixed finishes and held heat transitions',()=>{
+const f=fixture(format),cfg=f.data.config;cfg.fields[format]={...cfg.fields.lanes};cfg.boardPhases={[format]:{splitFields:{...cfg.fields.lanes,first:false,split:true},finishFields:{...cfg.fields.lanes,first:false,last:false,final:true,lane:false},finishHold:5}};
+cfg.compact={showHeader:false,showResults:true,resultsX:0,resultsBottom:0,resultsWidth:320,rowHeight:32,initials:false};
+f.data.state.program.heats[0].swimmers.push({lane:3,name:'Jones, Taylor',team:'SHARKS'});
+assert.match(f.render(),/Jamie Smith/);assert.doesNotMatch(f.render(),/LATEST SPLIT|<th>SPLIT/);
+f.at(1,'0:01.0');let html=f.render();assert.match(html,/data-phase="split"/);assert.doesNotMatch(html,/Jamie/);assert.match(html,/Smith/);assert.match(html,/LATEST SPLIT|<th>SPLIT/);
+f.at(20,'0:20.0');assert.match(f.render(),/data-phase="split"/); // racing does not wait for a split or expire
+f.data.state.feed.results={event:3,heat:2,lanes:{2:{splits:['28.31'],finalTime:'58.42'}}};html=f.render();assert.match(html,/data-lane-slot="2" data-phase="finish"/);assert.match(html,/data-lane-slot="3" data-phase="split"/);assert.match(html,/58.42/);
+f.at(200,null);f.data.error='offline';f.data.state.feed.results=null;assert.match(f.render(),/58.42/); // final survives dropout and time passage
+f.data.error=null;f.data.state.feed.heat=3;f.data.state.program.heats.push({...f.data.state.program.heats[0],heat:3,swimmers:[{lane:2,name:'Next, Swimmer'}]});
+f.at(201,'0:00.0');assert.match(f.render(),/58.42/);assert.match(f.nodes.notice.textContent,/PREVIOUS HEAT/);
+f.at(205.9);assert.match(f.render(),/58.42/);f.at(206);html=f.render();assert.doesNotMatch(html,/58.42/);assert.match(html,/Swimmer Next/);assert.match(html,/data-phase="start"/);
+// A configured longer hold and source reset are separate from ordinary heat changes.
+f.data.state.feed.results={event:3,heat:3,lanes:{2:{finalTime:'1:00.01'}}};f.render();cfg.boardPhases[format].finishHold=8;f.data.state.feed.heat=4;f.at(210);assert.match(f.render(),/1:00.01/);f.at(216);assert.match(f.render(),/1:00.01/);f.data.state.active='another-session';assert.doesNotMatch(f.render(),/1:00.01/);
 });

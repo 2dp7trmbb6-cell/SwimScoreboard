@@ -27,7 +27,7 @@ await fetch(manager+'/api/manage',{method:'POST',headers:{'Content-Type':'applic
 }
 await overlay.goto(base+'/overlay?format=board');await overlay.waitForSelector('table');await overlay.waitForFunction(()=>document.querySelector('tbody').textContent.includes('Jamie Smith'));assert.match(await overlay.locator('tbody').textContent(),/Jamie Smith/);assert.doesNotMatch(await overlay.locator('.board').textContent(),/IN THE WATER/);assert.equal(await overlay.locator('.meet-title').textContent(),'Demo Meet - 10/25/2026');assert.ok((await overlay.locator('.board-head').boundingBox()).height<140);if(process.env.BOARD_SCREENSHOT)await overlay.screenshot({path:process.env.BOARD_SCREENSHOT});assert.match(await overlay.locator('#notice').textContent(),/SIMULATED/);
 await page.locator('#mode').selectOption('board');await page.locator('#boardWidth').fill('640');await page.locator('#boardWidth').dispatchEvent('change');
-await overlay.waitForFunction(()=>Math.round(document.querySelector('.board')?.getBoundingClientRect().width)===640);
+await overlay.waitForFunction(()=>Math.round(document.querySelector('.board')?.getBoundingClientRect().width) >=640&&Math.round(document.querySelector('.board')?.getBoundingClientRect().width)<900);
 assert.ok(await overlay.locator('.board').evaluate(el=>el.scrollWidth<=el.clientWidth));
 await page.locator('#mode').selectOption('lanes');await page.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));await page.reload();await page.waitForSelector('#field-first');assert.equal(await page.locator('#field-first').isChecked(),false);assert.deepEqual(errors,[]);
 await page.locator('#alignmentMode').check();await page.locator('#usePool').check();

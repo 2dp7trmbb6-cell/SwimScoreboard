@@ -126,14 +126,21 @@ class ScoreboardTests(unittest.TestCase):
             state=State('unused',d)
             for format in ('board','compact'):
                 self.assertEqual(state.config['boardPhases'][format]['splitFields'],state.config['fields'][format])
-                self.assertFalse(state.config['boardPhases'][format]['autoHide'])
+                self.assertEqual(state.config['boardPhases'][format]['finishHold'],5)
             state.config['boardPhases']['board']['finishFields']['team']=False
             self.assertTrue(state.config['boardPhases']['compact']['finishFields']['team'])
             state.save(state.config)
             self.assertFalse(State('unused',d).config['boardPhases']['board']['finishFields']['team'])
-            for key,value in [('finishDelay',float('nan')),('splitDuration',0),('startEnabled','yes'),('finishDuration',601)]:
+            for key,value in [('finishHold',float('nan')),('finishHold',0),('finishHold','yes'),('finishHold',601)]:
                 invalid=defaults();invalid['boardPhases']['board'][key]=value
                 with self.assertRaises(ValueError):state.save(invalid)
+            legacy=defaults();legacy['boardPhases']['board'].pop('finishHold')
+            legacy['boardPhases']['board'].update(startEnabled=False,finishDuration=1,splitDuration=2)
+            Path(d,'settings.json').write_text(json.dumps(legacy))
+            migrated=State('unused',d)
+            self.assertEqual(set(migrated.config['boardPhases']['board']),{'splitFields','finishFields','finishHold'})
+            self.assertEqual(migrated.config['boardPhases']['board']['finishHold'],5)
+            migrated.save(migrated.config)
             invalid=defaults();invalid['boardPhases']['compact']['finishFields']['final']=1
             with self.assertRaises(ValueError):state.save(invalid)
 
