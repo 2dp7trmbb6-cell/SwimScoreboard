@@ -12,3 +12,9 @@
 /* Time content belongs to the same perspective plane as every other card item. */
 .lane-card.has-readable-time{align-items:center;padding-top:5px;padding-bottom:5px}.has-readable-time .lane-info{display:flex;flex:1;flex-direction:column;min-width:0}.has-readable-time .lane-name{font-size:22px;line-height:1.05}.has-readable-time .lane-team{font-size:14px;line-height:1.05}.has-readable-time .readable-time{position:static;left:auto;top:auto;transform:none;align-self:flex-start;max-width:100%;margin-top:2px;padding:0 4px;box-shadow:none}.has-readable-time .readable-time strong{line-height:1}
 .has-readable-time .lane-team{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* Keep the badge inside the lane's perspective plane, clear of name and time. */
+.personal-best{position:relative;flex:0 0 230px;width:230px;height:78px;margin-left:8px;pointer-events:none;animation:personal-best-fly-in .65s cubic-bezier(.16,1,.3,1) both}
+.personal-best img{display:block;width:100%;height:100%;object-fit:contain}
+@keyframes personal-best-fly-in{from{opacity:0;transform:translateX(180px) scale(.8)}to{opacity:1;transform:translateX(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.personal-best{animation:none}}

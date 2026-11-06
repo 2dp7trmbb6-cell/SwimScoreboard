@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).parent
-APP_VERSION=hashlib.sha256(b''.join((ROOT/'static'/name).read_bytes() for name in ('app.js','style.css','index.html','overlay.html'))).hexdigest()[:12]
+APP_VERSION=hashlib.sha256(b''.join((ROOT/'static'/name).read_bytes() for name in ('app.js','style.css','index.html','overlay.html','personal-best.png'))).hexdigest()[:12]
 
 def config_revision(config):
     return hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()[:12]
@@ -28,7 +28,7 @@ def lane_phase_defaults(start=None):
     return dict(splitFields=dict(start,seed=False,split=True,final=False,place=False),
                 finishFields=dict(start,lane=False,seed=False,split=False,final=True),
                 startEnabled=True,splitEnabled=True,startDelay=0,startDuration=0,startHideDelay=.5,
-                splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36)
+                splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36,personalBest=False)
 
 def defaults():
     return dict(lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
@@ -41,6 +41,7 @@ def migrate(config):
     config['fields'].setdefault('compact',field_defaults()['compact'])
     config.setdefault('compact',compact_defaults())
     config.setdefault('lanePhases',lane_phase_defaults(config['fields']['lanes']))
+    config['lanePhases'].setdefault('personalBest',False)
     config.setdefault('finishPopups',True)
     config.setdefault('boardWidth',1760)
     config.setdefault('alignment',defaults()['alignment'])
@@ -114,7 +115,7 @@ class State:
         for key in ('splitFields','finishFields'):
             fields=phases[key]
             if not isinstance(fields,dict) or set(fields)!=set(field_defaults()['lanes']) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid lane phase fields')
-        for key in ('startEnabled','splitEnabled','uprightTimes'):
+        for key in ('startEnabled','splitEnabled','uprightTimes','personalBest'):
             if type(phases[key]) is not bool: raise ValueError('Invalid lane phase flag')
         for key in ('startDelay','startDuration','startHideDelay','splitDelay','splitDuration','finishDelay','finishDuration'):
             if type(phases[key]) not in (int,float) or not 0<=phases[key]<=600: raise ValueError('Lane overlay timing must be 0–600 seconds')
@@ -157,10 +158,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path=urlsplit(self.path).path
         if path=='/api/state': return self.send(200,self.server.state.get())
-        files={'/':'index.html','/overlay':'overlay.html','/app.js':'app.js','/style.css':'style.css'}
+        files={'/':'index.html','/overlay':'overlay.html','/app.js':'app.js','/style.css':'style.css','/personal-best.png':'personal-best.png'}
         if path not in files: return self.send(404,dict(error='Not found'))
         file=ROOT/'static'/files[path]
-        kind={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript'}[file.suffix]
+        kind={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png'}[file.suffix]
         body=file.read_bytes()
         if path=='/app.js':body=body.replace(b'__APP_VERSION__',APP_VERSION.encode())
         self.send(200,body,kind)

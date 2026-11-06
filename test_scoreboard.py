@@ -100,14 +100,28 @@ class ScoreboardTests(unittest.TestCase):
             invalid=defaults();invalid['lanePhases']['finishFields']['final']='yes'
             with self.assertRaises(ValueError):state.save(invalid)
 
+    def test_personal_best_migration_validation_and_persistence(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            config=defaults();config['lanePhases'].pop('personalBest')
+            Path(d,'settings.json').write_text(json.dumps(config))
+            state=State('unused',d)
+            self.assertFalse(state.config['lanePhases']['personalBest'])
+            state.config['lanePhases']['personalBest']=True;state.save(state.config)
+            self.assertTrue(State('unused',d).config['lanePhases']['personalBest'])
+            invalid=defaults();invalid['lanePhases']['personalBest']='yes'
+            with self.assertRaises(ValueError):state.save(invalid)
+
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:
             server=ThreadingHTTPServer(('127.0.0.1',0),Handler); server.state=State('unused',d)
             thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
             base=f'http://127.0.0.1:{server.server_port}'
             try:
-                for path in ['/', '/overlay?format=lanes','/app.js','/style.css']:
-                    with urllib.request.urlopen(base+path) as r:self.assertEqual(r.status,200)
+                for path in ['/', '/overlay?format=lanes','/app.js','/style.css','/personal-best.png']:
+                    with urllib.request.urlopen(base+path) as r:
+                        self.assertEqual(r.status,200)
+                        self.assertTrue(r.read())
                 with urllib.request.urlopen(base+'/api/state') as r:initial=json.load(r)
                 with urllib.request.urlopen(base+'/app.js') as r:
                     self.assertEqual(r.headers['Cache-Control'],'no-store')

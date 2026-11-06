@@ -123,3 +123,13 @@ Use 1× playback for realistic polling tests; high playback speeds can advance t
 
 
 `SMOKE_SCRIPT=test_time_alignment_browser.cjs python browser_smoke.py` checks five strongly skewed lanes, ensures times fit beneath the identity text, and verifies time position/size scale with the card geometry (macOS/Linux shell syntax).
+
+### Unofficial Personal Best finish badge
+
+Enable **Personal Best fly-in on finish cards** under **Lane overlay timing**. It is off by default. An individual swimmer whose valid final time is strictly faster than their imported seed receives an Auburn Stingrays inspired **PERSONAL BEST / UNOFFICIAL** badge, which flies into their lane finish card and follows its perspective alignment. It uses the existing finish appearance delay, duration, visibility and heat/session/source reset rules. Reduced-motion preferences disable the fly-in.
+
+This is a seed comparison, not a verified lifetime personal record. Ties, zero/missing/invalid times, NT/DQ strings, relay entries and ambiguous multiple entries in one lane do not qualify. Seed times must represent the same event/course as the final; the scoreboard cannot verify course equivalency or historical records. Corrections can add/remove the badge; placement/time updates do not replay an already visible badge's animation. Simulation and replay remain labeled by the overlay.
+
+`SMOKE_SCRIPT=test_personal_best_browser.cjs python browser_smoke.py` checks the saved control, image loading, animation completion, correction handling, layout and live updates using disposable data.
+
+See `AGENTS.md` for the repository map, setup, startup and validation commands used by coding agents in new sessions.

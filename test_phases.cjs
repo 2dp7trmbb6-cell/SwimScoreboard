@@ -13,3 +13,21 @@ test('finish has separate fields, priority, delay and expiry without fallback',(
 test('zero finish duration holds through stopped clock and resets on new heat',()=>{const f=fixture();f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'0:58.42',place:1}}};f.render();f.at(100,'0:58.4');assert.match(f.render(),/finish-card/);f.at(200,null);f.data.state.feed.results=null;assert.match(f.render(),/0:58.42/);f.data.state.feed.heat=3;f.data.state.program.heats.push({...f.data.state.program.heats[0],heat:3});assert.match(f.render(),/data-phase="start"/);assert.doesNotMatch(f.render(),/0:58.42/)});
 test('windows continue while output hidden; split/finish lanes operate independently',()=>{const f=fixture();f.data.config.visible=false;f.data.config.lanePhases.finishDuration=2;f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'0:58.42',place:1}}};f.render();f.at(3);f.data.config.visible=true;assert.equal(f.render(),'');const g=fixture();g.data.config.lanes[3]=g.data.config.lanes[2];g.data.state.program.heats[0].swimmers.push({lane:3,name:'Jones, Taylor',team:'SHARKS'});g.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'0:58.42',place:1},3:{splits:['0:28.31']}}};const html=g.render();assert.match(html,/data-lane="2" data-phase="finish"/);assert.match(html,/data-lane="3" data-phase="split"/)});
 test('running clock advances between packets, freezes on repeated stopped readings and rejects stale data',()=>{const f=fixture();f.at(0,'0:01.0');assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE})`),'0:01.0');f.at(.4,'0:01.4');assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE+400})`),'0:01.4');assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE+650})`),'0:01.6');f.at(.8,'0:01.4');assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE+800})`),'0:01.4');assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE+1000})`),'0:01.4');f.at(1,'0:00.0');assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE+1000})`),'0:00.0');f.data.error='offline';assert.equal(f.run(`displayClock(${JSON.stringify(f.data)},${BASE+1200})`),'—')});
+
+test('personal best is opt-in and compares valid individual finals strictly against seed',()=>{
+const f=fixture();f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'1:01.99',place:1}}};
+assert.doesNotMatch(f.render(),/class="personal-best"/);
+f.data.config.lanePhases.personalBest=true;assert.match(f.render(),/class="personal-best"/);assert.match(f.render(),/Unofficial/);
+for(const finalTime of ['1:02.00','1:02.01','NT','DQ','0:00.00','1:60.00','-1','NaN','58.42 DQ']){f.data.state.feed.results.lanes[2].finalTime=finalTime;assert.doesNotMatch(f.render(),/class="personal-best"/,finalTime)}
+f.data.state.feed.results.lanes[2].finalTime='58.42';
+for(const seed of ['NT','DQ','—','','0:00.00','1:99.0']){f.data.state.program.heats[0].swimmers[0].seedTime=seed;assert.doesNotMatch(f.render(),/class="personal-best"/,seed)}
+f.data.state.program.heats[0].swimmers[0].seedTime='1:02.0';assert.match(f.render(),/class="personal-best"/);
+f.data.state.program.heats[0].title='Freestyle Relay';assert.doesNotMatch(f.render(),/class="personal-best"/);
+});
+test('PB follows finish delay, corrected final, outage hold, and heat reset',()=>{
+const f=fixture();f.data.config.lanePhases.personalBest=true;f.data.config.lanePhases.finishDelay=1;
+f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'58.42'}}};assert.doesNotMatch(f.render(),/class="personal-best"/);f.at(1);assert.match(f.render(),/class="personal-best"/);
+f.data.state.feed.results.lanes[2].finalTime='1:03.00';assert.doesNotMatch(f.render(),/class="personal-best"/);
+f.data.state.feed.results.lanes[2].finalTime='58.42';f.render();f.data.error='offline';f.data.state.feed.results=null;assert.match(f.render(),/class="personal-best"/);
+f.data.state.feed.heat=3;assert.doesNotMatch(f.render(),/class="personal-best"/);
+});
