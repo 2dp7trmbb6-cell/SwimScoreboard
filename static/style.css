@@ -31,3 +31,13 @@
 .board-pb.pb-new .personal-best{animation:personal-best-fly-in .3s ease-out both}
 .board .pb-cell,.compact-results .pb-cell{padding:2px 5px}
 @media(prefers-reduced-motion:reduce){.board-pb.pb-new .personal-best{animation:none}}
+
+/* The editor always names the selected format; shared settings stay separate. */
+.shared-settings{border-top:3px solid var(--teal)}.format-editor{border-top:3px solid var(--cyan)}
+.format-editor h3{font-size:16px;margin:22px 0 10px}.format-layout,.phase-field-editor{padding-top:8px;border-top:1px solid var(--line);margin-top:18px}
+fieldset{min-width:0;margin:20px 0;padding:4px 14px 12px;border:1px solid #386176;border-radius:8px}legend{padding:0 8px;color:var(--cyan);font-size:15px;font-weight:750}fieldset p{font-size:12px}.format-editor select{font-weight:650}.format-editor a{color:var(--cyan)}
+
+.phase-summary{display:grid;gap:8px;margin:18px 0}.phase-summary article{padding:10px 12px;background:#0a2231;border-radius:6px;border-left:3px solid var(--cyan)}.phase-summary strong{font-size:13px}.phase-summary strong span{float:right;color:var(--teal)}.phase-summary p{font-size:12px;line-height:1.4;margin:5px 0}.phase-summary small{font-size:10px;letter-spacing:0;color:var(--muted)}
+
+.phase-summary,.phase-timing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.phase-timing-grid fieldset{margin:0}.phase-timing-grid{margin-top:20px}.format-editor .fields{grid-template-columns:repeat(4,minmax(0,1fr))}.format-editor #mode,.format-editor #lanePhase,.format-editor #boardWidth{max-width:420px}.format-editor .format-layout label:has(input[type=number]){max-width:420px}.layout>div{min-width:0}
+@media(max-width:1200px){.phase-summary,.phase-timing-grid{grid-template-columns:1fr}.format-editor .fields{grid-template-columns:repeat(2,minmax(0,1fr))}}

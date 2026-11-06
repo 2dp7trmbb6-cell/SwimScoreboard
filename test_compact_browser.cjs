@@ -11,6 +11,6 @@ for(const panel of ['.compact-header','.compact-results'])assert.ok(await overla
 if(process.env.COMPACT_SCREENSHOT)await overlay.screenshot({path:process.env.COMPACT_SCREENSHOT,omitBackground:true});
 await control.locator('summary').filter({hasText:'Panel positions'}).click();await control.locator('#compact-resultsWidth').fill('560');await control.locator('#compact-resultsWidth').dispatchEvent('change');await overlay.waitForFunction(()=>Math.round(document.querySelector('.compact-results').getBoundingClientRect().width)===560);
 await control.locator('#compact-showHeader').uncheck();await overlay.waitForFunction(()=>!document.querySelector('.compact-header'));await control.locator('#compact-showHeader').check();
-await control.locator('#field-final').uncheck();await overlay.waitForFunction(()=>!document.querySelector('thead').textContent.includes('FINAL'));
+await control.locator('#field-final').uncheck();for(const phase of ['split','finish']){await control.locator('#lanePhase').selectOption(phase);await control.locator('#field-final').uncheck()}await overlay.waitForFunction(()=>!document.querySelector('thead').textContent.includes('FINAL'));
 assert.deepEqual(errors,[]);console.log('Condensed browser checks passed: independent fields, 8-lane fit, transparent gap, names, live resize and header toggles.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

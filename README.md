@@ -135,3 +135,15 @@ This is a seed comparison, not a verified lifetime personal record. Ties, zero/m
 See `AGENTS.md` for the repository map, setup, startup and validation commands used by coding agents in new sessions.
 
 Traditional and condensed scoreboards each have an independent **Personal Best badges** toggle under **Output controls**, off by default. Enabling it reserves a PB / UNOFFICIAL column beside the final time (or after other selected columns when final time is hidden). Blank lanes retain empty cells. These boards use current matching results only; unavailable/stale results remove their badges. The lane finish badge stays grouped next to the swimmer details and time rather than the far card edge.
+
+### Scoreboard controls and race phases
+
+**Meet & output** contains shared lane count and Show output. Lane count appears once and drives both reserved table rows and pool geometry. Choose **Scoreboard to configure & preview** to edit Traditional, Condensed, or Pool lane overlays. The editor names the active format, summarizes its three states, and shows only that format's layout, timing and styling controls. OBS URLs keep their explicit format.
+
+All three formats have independent **Start / pre-race**, **Split received**, and **Finish / final result** field selections. Select a phase under Fields by race phase, then choose its fields. The phase summary shows the selections together for comparison. Each format also has its own start/split/finish visibility switches, delays and durations. Traditional and condensed keep their meet headers and reserved row slots while each swimmer changes phase independently. Columns are reserved for fields selected in any phase; fields disabled in the current phase leave blank cells, preserving alignment. Hidden rows keep empty slots.
+
+Start begins when the source sees a matching heat. A new split starts that swimmer's split window; during its delay or after expiry, the start state may show if still enabled and within its own window. Finals take priority immediately: during the finish delay, after finish expiry, or when finish display is disabled, that swimmer's row/card is blank/hidden rather than returning to start or split. Finish duration zero holds until the heat/session/source changes. Automatic start hiding is independent per format and defaults off for tables. Header and condensed panel visibility remain layout controls, independent of row phase visibility.
+
+Existing traditional/condensed display fields are copied into their new split and finish selections during migration, preserving previous choices. Lane settings, Personal Best options, and saved layout/alignment remain independent. Board PB badges appear only in the finish state and use current matching results; lane cards retain their existing held-finish behavior.
+
+Validation: `SMOKE_SCRIPT=test_controls_browser.cjs python browser_smoke.py` exercises format-scoped controls, shared lane count, per-phase fields, mixed swimmer states, finish expiry, heat reset and saved settings.

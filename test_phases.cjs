@@ -1,8 +1,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),test=require('node:test'),assert=require('node:assert/strict');
 const BASE=1700000000000;
-function fixture(){let now=BASE;class Clock extends Date{static now(){return now}}
+function fixture(format='lanes'){let now=BASE;class Clock extends Date{static now(){return now}}
 const nodes={broadcast:{innerHTML:'',replaceChildren(){this.innerHTML=''}},notice:{textContent:''}};
-const context=vm.createContext({document:{body:{classList:{contains:()=>false}},getElementById:id=>nodes[id]},location:{search:'?format=lanes'},URLSearchParams,Date:Clock,setTimeout:()=>{},clearTimeout:()=>{}});
+const context=vm.createContext({document:{body:{classList:{contains:()=>false}},getElementById:id=>nodes[id]},location:{search:'?format='+format},URLSearchParams,Date:Clock,setTimeout:()=>{},clearTimeout:()=>{}});
 vm.runInContext(fs.readFileSync(__dirname+'/static/app.js','utf8').replace(/poll\(\);\s*$/,''),context);vm.runInContext("updateLaneCards=cards=>document.getElementById('broadcast').innerHTML=cards.join('')",context);
 const fields={lane:true,place:true,first:true,last:true,team:true,seed:false,split:false,final:false};
 const data={received:BASE/1000,error:null,now:BASE/1000,config:{visible:true,autoHide:true,finishPopups:true,fields:{lanes:{...fields}},lanePhases:{splitFields:{...fields,split:true},finishFields:{...fields,first:false,team:false,final:true,lane:false},startEnabled:true,splitEnabled:true,startDelay:0,startDuration:0,startHideDelay:.5,splitDelay:0,splitDuration:5,finishDelay:0,finishDuration:0,uprightTimes:true,timeSize:36},lanes:{2:{enabled:true,points:[[10,10],[710,10],[710,100],[10,100]]}}},state:{active:'session',program:{heats:[{event:3,heat:2,title:'Freestyle',swimmers:[{lane:2,name:'Smith, Jamie',team:'WAVES',seedTime:'1:02.00'}]}]},feed:{event:3,heat:2,connected:true,clockLast:BASE/1000,raceClock:'0:00.0'}}};
@@ -30,4 +30,23 @@ f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'58.42'}}};assert.
 f.data.state.feed.results.lanes[2].finalTime='1:03.00';assert.doesNotMatch(f.render(),/class="personal-best"/);
 f.data.state.feed.results.lanes[2].finalTime='58.42';f.render();f.data.error='offline';f.data.state.feed.results=null;assert.match(f.render(),/class="personal-best"/);
 f.data.state.feed.heat=3;assert.doesNotMatch(f.render(),/class="personal-best"/);
+});
+
+for(const format of ['board','compact'])test(format+' rows have independent phase fields, delays, expiry and blank reserved slots',()=>{
+const f=fixture(format),cfg=f.data.config;
+cfg.fields[format]={...cfg.fields.lanes};
+cfg.boardPhases={[format]:{...cfg.lanePhases,finishEnabled:true,autoHide:false,splitDelay:1,splitDuration:2,finishDelay:1,finishDuration:2}};
+const o=cfg.boardPhases[format];o.splitFields={...cfg.fields[format],first:false,split:true};o.finishFields={...cfg.fields[format],first:false,last:false,final:true,lane:false};
+cfg.compact={showHeader:false,showResults:true,resultsX:0,resultsBottom:0,resultsWidth:624,rowHeight:32,initials:false};
+cfg.lanes[3]=cfg.lanes[2];f.data.state.program.heats[0].swimmers.push({lane:3,name:'Jones, Taylor',team:'SHARKS'});
+assert.match(f.render(),/Jamie Smith/);
+f.data.state.feed.results={event:3,heat:2,lanes:{2:{splits:['28.31']}}};
+assert.match(f.render(),/Jamie Smith/);assert.match(f.render(),/Taylor Jones/);
+f.at(1);assert.match(f.render(),/data-phase="split"/);assert.match(f.render(),/28.31/);assert.doesNotMatch(f.render(),/Jamie/);
+f.at(3);assert.match(f.render(),/Jamie Smith/); // split expired: configured start state resumes
+f.data.state.feed.results.lanes[2].finalTime='58.42';assert.doesNotMatch(f.render(),/58.42/);
+f.at(4);const html=f.render();assert.match(html,/data-lane-slot="2" data-phase="finish"/);assert.match(html,/58.42/);assert.doesNotMatch(html,/Jamie Smith/);assert.match(html,/Taylor Jones/);
+f.at(6);assert.doesNotMatch(f.render(),/58.42/);assert.match(f.render(),/data-lane-slot="2" data-phase="" class="unused-lane"/);
+o.finishDuration=0;assert.match(f.render(),/58.42/);o.finishEnabled=false;assert.doesNotMatch(f.render(),/58.42/);
+f.data.state.feed.heat=3;assert.doesNotMatch(f.render(),/58.42/);
 });

@@ -117,6 +117,26 @@ class ScoreboardTests(unittest.TestCase):
             invalid=defaults();invalid['lanePhases']['personalBest']='yes'
             with self.assertRaises(ValueError):state.save(invalid)
 
+    def test_board_phase_migration_independence_and_validation(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            config=defaults();config.pop('boardPhases')
+            config['fields']['board']['seed']=False
+            Path(d,'settings.json').write_text(json.dumps(config))
+            state=State('unused',d)
+            for format in ('board','compact'):
+                self.assertEqual(state.config['boardPhases'][format]['splitFields'],state.config['fields'][format])
+                self.assertFalse(state.config['boardPhases'][format]['autoHide'])
+            state.config['boardPhases']['board']['finishFields']['team']=False
+            self.assertTrue(state.config['boardPhases']['compact']['finishFields']['team'])
+            state.save(state.config)
+            self.assertFalse(State('unused',d).config['boardPhases']['board']['finishFields']['team'])
+            for key,value in [('finishDelay',float('nan')),('splitDuration',0),('startEnabled','yes'),('finishDuration',601)]:
+                invalid=defaults();invalid['boardPhases']['board'][key]=value
+                with self.assertRaises(ValueError):state.save(invalid)
+            invalid=defaults();invalid['boardPhases']['compact']['finishFields']['final']=1
+            with self.assertRaises(ValueError):state.save(invalid)
+
     def test_http_controls_and_routes(self):
         with tempfile.TemporaryDirectory() as d:
             server=ThreadingHTTPServer(('127.0.0.1',0),Handler); server.state=State('unused',d)

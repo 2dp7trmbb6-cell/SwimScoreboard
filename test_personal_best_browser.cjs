@@ -1,7 +1,7 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('node:fs');
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
 const context=await browser.newContext({viewport:{width:1920,height:1080}}),base=process.env.SCOREBOARD_URL,control=await context.newPage();
-await control.goto(base);await control.locator('#phase-personalBest').check();await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
+await control.goto(base);await control.locator('#mode').selectOption('lanes');await control.locator('#phase-personalBest').check();await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let finalTime='58.42',place=1,heat=2;
 await page.route('**/api/state',async route=>{const d=await(await fetch(base+'/api/state')).json(),now=Date.now()/1000;d.received=d.now=now;d.error=null;d.state.program.heats=[{event:3,heat,title:'100 Freestyle',swimmers:[{lane:2,name:'Smith, Jamie',team:'AYST',seedTime:'1:02.00'}]}];d.state.feed={event:3,heat,connected:true,clockLast:now,raceClock:'0:58.4',results:{event:3,heat,lanes:{2:{finalTime,place}}}};await route.fulfill({json:d})});
 await page.goto(base+'/overlay?format=lanes');await page.waitForSelector('.personal-best');
@@ -15,7 +15,7 @@ finalTime='58.42';await page.waitForSelector('.personal-best');await control.loc
 await control.reload();assert.equal(await control.locator('#phase-personalBest').isChecked(),false);
 // Check both independent scoreboard controls with the same final and seed.
 for(const format of ['board','compact']){
- await control.locator('#pb-'+format).check();await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
+ await control.locator('#mode').selectOption(format);await control.locator('#pb-'+format).check();await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
  const board=await context.newPage();await board.route('**/api/state',async route=>{const d=await(await fetch(base+'/api/state')).json(),now=Date.now()/1000;d.received=d.now=now;d.error=null;d.state.program.heats=[{event:3,heat:2,title:'Freestyle',swimmers:[{lane:2,name:'Smith, Jamie',team:'AYST',seedTime:'1:02.00'}]}];d.state.feed={event:3,heat:2,connected:true,clockLast:now,results:{event:3,heat:2,lanes:{2:{finalTime:'58.42',place:1}}}};await route.fulfill({json:d})});
  await board.goto(base+'/overlay?format='+format);await board.waitForSelector('.pb-cell .personal-best');
  assert.equal(await board.locator('.pb-cell .personal-best img').evaluate(i=>i.complete&&i.naturalWidth>0),true);

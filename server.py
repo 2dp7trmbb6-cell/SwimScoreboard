@@ -30,8 +30,14 @@ def lane_phase_defaults(start=None):
                 startEnabled=True,splitEnabled=True,startDelay=0,startDuration=0,startHideDelay=.5,
                 splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36,personalBest=False)
 
+def board_phase_defaults(fields):
+    return dict(splitFields=dict(fields),finishFields=dict(fields),startEnabled=True,
+                splitEnabled=True,finishEnabled=True,autoHide=False,startDelay=0,
+                startDuration=0,startHideDelay=.5,splitDelay=0,splitDuration=5,
+                finishDelay=0,finishDuration=0)
+
 def defaults():
-    return dict(personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(boardPhases={f:board_phase_defaults(field_defaults()[f]) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
     if 'board' not in config.get('fields',{}):
@@ -39,6 +45,7 @@ def migrate(config):
         config['fields']=field_defaults()
         config['fields']['board'].update(legacy)
     config['fields'].setdefault('compact',field_defaults()['compact'])
+    config.setdefault('boardPhases',{f:board_phase_defaults(config['fields'][f]) for f in ('board','compact')})
     config.setdefault('compact',compact_defaults())
     config.setdefault('lanePhases',lane_phase_defaults(config['fields']['lanes']))
     config['lanePhases'].setdefault('personalBest',False)
@@ -124,6 +131,18 @@ class State:
             if type(phases[key]) not in (int,float) or not 0<=phases[key]<=600: raise ValueError('Lane overlay timing must be 0–600 seconds')
         if phases['splitDuration']<=0: raise ValueError('Split duration must be greater than zero')
         if type(phases['timeSize']) is not int or not 18<=phases['timeSize']<=64: raise ValueError('Time size must be 18–64 pixels before alignment')
+        boards=config['boardPhases']
+        if not isinstance(boards,dict) or set(boards)!={'board','compact'}: raise ValueError('Invalid scoreboard phases')
+        for format,options in boards.items():
+            if not isinstance(options,dict) or set(options)!=set(board_phase_defaults(config['fields'][format])): raise ValueError('Invalid scoreboard phase settings')
+            for key in ('splitFields','finishFields'):
+                fields=options[key]
+                if not isinstance(fields,dict) or set(fields)!=set(field_defaults()[format]) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid scoreboard phase fields')
+            for key in ('startEnabled','splitEnabled','finishEnabled','autoHide'):
+                if type(options[key]) is not bool: raise ValueError('Invalid scoreboard phase flag')
+            for key in ('startDelay','startDuration','startHideDelay','splitDelay','splitDuration','finishDelay','finishDuration'):
+                if type(options[key]) not in (int,float) or not 0<=options[key]<=600: raise ValueError('Scoreboard timing must be 0–600 seconds')
+            if options['splitDuration']<=0: raise ValueError('Split duration must be greater than zero')
         compact=config['compact']
         if not isinstance(compact,dict) or set(compact)!=set(compact_defaults()): raise ValueError('Invalid condensed layout')
         for k in ('initials','showHeader','showResults'):
