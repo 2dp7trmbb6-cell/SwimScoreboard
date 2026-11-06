@@ -14,7 +14,20 @@
 .has-readable-time .lane-team{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 
 /* Keep the badge inside the lane's perspective plane, clear of name and time. */
-.personal-best{position:relative;flex:0 0 230px;width:230px;height:78px;margin-left:8px;pointer-events:none;animation:personal-best-fly-in .65s cubic-bezier(.16,1,.3,1) both}
+.personal-best{position:relative;flex:0 0 230px;width:230px;height:78px;margin-left:0;pointer-events:none;animation:personal-best-fly-in .65s cubic-bezier(.16,1,.3,1) both}
 .personal-best img{display:block;width:100%;height:100%;object-fit:contain}
 @keyframes personal-best-fly-in{from{opacity:0;transform:translateX(180px) scale(.8)}to{opacity:1;transform:translateX(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.personal-best{animation:none}}
+
+/* Group the celebration with the identity/time rather than the far card edge. */
+.has-personal-best{gap:12px}
+.has-personal-best .lane-info{flex:0 1 auto;max-width:calc(100% - 320px)}
+.has-personal-best .lane-times{order:1}
+
+/* Reserve a PB column so badges never replace names, times or placement. */
+.board-pb{display:block;width:100%;max-width:200px;margin:auto}
+.board-pb .personal-best{width:100%;height:48px;margin:0;animation:none}
+.compact-results .board-pb .personal-best{height:calc(var(--compact-row) - 6px);max-height:40px}
+.board-pb.pb-new .personal-best{animation:personal-best-fly-in .3s ease-out both}
+.board .pb-cell,.compact-results .pb-cell{padding:2px 5px}
+@media(prefers-reduced-motion:reduce){.board-pb.pb-new .personal-best{animation:none}}

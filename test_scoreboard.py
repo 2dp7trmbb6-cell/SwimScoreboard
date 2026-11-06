@@ -103,12 +103,17 @@ class ScoreboardTests(unittest.TestCase):
     def test_personal_best_migration_validation_and_persistence(self):
         from pathlib import Path
         with tempfile.TemporaryDirectory() as d:
-            config=defaults();config['lanePhases'].pop('personalBest')
+            config=defaults();config['lanePhases'].pop('personalBest');config.pop('personalBestBoards')
             Path(d,'settings.json').write_text(json.dumps(config))
             state=State('unused',d)
             self.assertFalse(state.config['lanePhases']['personalBest'])
+            self.assertEqual(state.config['personalBestBoards'],dict(board=False,compact=False))
+            state.config['personalBestBoards']['board']=True
             state.config['lanePhases']['personalBest']=True;state.save(state.config)
             self.assertTrue(State('unused',d).config['lanePhases']['personalBest'])
+            self.assertTrue(State('unused',d).config['personalBestBoards']['board'])
+            invalid=defaults();invalid['personalBestBoards']['compact']='yes'
+            with self.assertRaises(ValueError):state.save(invalid)
             invalid=defaults();invalid['lanePhases']['personalBest']='yes'
             with self.assertRaises(ValueError):state.save(invalid)
 

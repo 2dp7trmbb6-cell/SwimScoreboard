@@ -31,7 +31,7 @@ def lane_phase_defaults(start=None):
                 splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36,personalBest=False)
 
 def defaults():
-    return dict(lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
     if 'board' not in config.get('fields',{}):
@@ -42,6 +42,7 @@ def migrate(config):
     config.setdefault('compact',compact_defaults())
     config.setdefault('lanePhases',lane_phase_defaults(config['fields']['lanes']))
     config['lanePhases'].setdefault('personalBest',False)
+    config.setdefault('personalBestBoards',dict(board=False,compact=False))
     config.setdefault('finishPopups',True)
     config.setdefault('boardWidth',1760)
     config.setdefault('alignment',defaults()['alignment'])
@@ -110,6 +111,8 @@ class State:
         if set(config['fields']) != {'board','lanes','compact'}: raise ValueError('Invalid scoreboard fields')
         for format,fields in config['fields'].items():
             if not isinstance(fields,dict) or set(fields)!=set(field_defaults()[format]) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid fields')
+        pb=config['personalBestBoards']
+        if not isinstance(pb,dict) or set(pb)!={'board','compact'} or any(type(v) is not bool for v in pb.values()): raise ValueError('Invalid scoreboard Personal Best options')
         phases=config['lanePhases']
         if not isinstance(phases,dict) or set(phases)!=set(lane_phase_defaults()): raise ValueError('Invalid lane phase settings')
         for key in ('splitFields','finishFields'):

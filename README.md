@@ -133,3 +133,5 @@ This is a seed comparison, not a verified lifetime personal record. Ties, zero/m
 `SMOKE_SCRIPT=test_personal_best_browser.cjs python browser_smoke.py` checks the saved control, image loading, animation completion, correction handling, layout and live updates using disposable data.
 
 See `AGENTS.md` for the repository map, setup, startup and validation commands used by coding agents in new sessions.
+
+Traditional and condensed scoreboards each have an independent **Personal Best badges** toggle under **Output controls**, off by default. Enabling it reserves a PB / UNOFFICIAL column beside the final time (or after other selected columns when final time is hidden). Blank lanes retain empty cells. These boards use current matching results only; unavailable/stale results remove their badges. The lane finish badge stays grouped next to the swimmer details and time rather than the far card edge.
