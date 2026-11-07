@@ -5,10 +5,43 @@ const nodes={broadcast:{innerHTML:'',replaceChildren(){this.innerHTML=''}},notic
 const context=vm.createContext({document:{body:{classList:{contains:()=>false}},getElementById:id=>nodes[id]},location:{search:'?format='+format},URLSearchParams,Date:Clock,setTimeout:()=>{},clearTimeout:()=>{}});
 vm.runInContext(fs.readFileSync(__dirname+'/static/app.js','utf8').replace(/poll\(\);\s*$/,''),context);vm.runInContext("updateLaneCards=cards=>document.getElementById('broadcast').innerHTML=cards.join('')",context);
 const fields={lane:true,place:true,first:true,last:true,team:true,seed:false,split:false,final:false};
-const data={received:BASE/1000,error:null,now:BASE/1000,config:{visible:true,autoHide:true,finishPopups:true,fields:{lanes:{...fields}},lanePhases:{splitFields:{...fields,split:true},finishFields:{...fields,first:false,team:false,final:true,lane:false},startEnabled:true,splitEnabled:true,startDelay:0,startDuration:0,startHideDelay:.5,splitDelay:0,splitDuration:5,finishDelay:0,finishDuration:0,uprightTimes:true,timeSize:36},lanes:{2:{enabled:true,points:[[10,10],[710,10],[710,100],[10,100]]}}},state:{active:'session',program:{heats:[{event:3,heat:2,title:'Freestyle',swimmers:[{lane:2,name:'Smith, Jamie',team:'WAVES',seedTime:'1:02.00'}]}]},feed:{event:3,heat:2,connected:true,clockLast:BASE/1000,raceClock:'0:00.0'}}};
+const data={received:BASE/1000,error:null,now:BASE/1000,config:{splitModes:{board:'cumulative',compact:'cumulative',lanes:'cumulative'},visible:true,autoHide:true,finishPopups:true,fields:{lanes:{...fields}},lanePhases:{splitFields:{...fields,split:true},finishFields:{...fields,first:false,team:false,final:true,lane:false},startEnabled:true,splitEnabled:true,startDelay:0,startDuration:0,startHideDelay:.5,splitDelay:0,splitDuration:5,finishDelay:0,finishDuration:0,uprightTimes:true,timeSize:36},lanes:{2:{enabled:true,points:[[10,10],[710,10],[710,100],[10,100]]}}},state:{active:'session',program:{heats:[{event:3,heat:2,title:'Freestyle',swimmers:[{lane:2,name:'Smith, Jamie',team:'WAVES',seedTime:'1:02.00'}]}]},feed:{event:3,heat:2,connected:true,clockLast:BASE/1000,raceClock:'0:00.0'}}};
 return {data,nodes,run:s=>vm.runInContext(s,context),at(seconds,clock){now=BASE+seconds*1000;data.now=now/1000;data.received=now/1000;data.state.feed.clockLast=now/1000;if(clock!==undefined)data.state.feed.raceClock=clock},render(){vm.runInContext(`renderOutput(${JSON.stringify(data)})`,context);return nodes.broadcast.innerHTML}}}
 test('start delay, finite duration and clock grace are independent',()=>{const f=fixture(),p=f.data.config.lanePhases;p.startDelay=2;p.startDuration=3;assert.equal(f.render(),'');f.at(2);assert.match(f.render(),/data-phase="start"/);f.at(4.9);assert.match(f.render(),/Jamie Smith/);f.at(5);assert.equal(f.render(),'');const g=fixture();g.data.config.lanePhases.startHideDelay=2;g.render();g.at(1,'0:01.0');assert.match(g.render(),/data-phase="start"/);g.at(2,'0:02.0');assert.equal(g.render(),'');g.at(3,null);assert.equal(g.render(),'')});
 test('split delay/expiry tracks new values, not repeated poll timestamps',()=>{const f=fixture(),p=f.data.config.lanePhases;p.startEnabled=false;p.splitDelay=1;p.splitDuration=2;f.data.state.feed.results={event:3,heat:2,lanes:{2:{splits:['0:28.31']}}};assert.equal(f.render(),'');f.at(1);assert.match(f.render(),/data-phase="split"/);assert.match(f.render(),/0:28.31/);f.at(2.9);assert.match(f.render(),/0:28.31/);f.at(3);assert.equal(f.render(),'');f.at(5);assert.equal(f.render(),'');f.data.state.feed.results.lanes[2].splits.push('0:58.42');assert.equal(f.render(),'');f.at(6);assert.match(f.render(),/0:58.42/)});
+test('subtractive splits use integer hundredths and require valid consecutive cumulative times',()=>{
+const f=fixture();
+for(const [splits,expected] of [
+ [['0:28.31'],'0:28.31'],[['28.31','58.42'],'0:30.11'],
+ [['0:59.99','1:00.01'],'0:00.02'],[['1:10.00','2:20.01'],'1:10.01'],
+ [['0:00.01','0:00.02'],'0:00.01'],[['100:00.00','101:01.25'],'1:01.25'],
+ [[], '—'],[null,'—'],[['NT'],'—'],[['0:00.00'],'—'],
+ [['0:28.31','DQ'],'—'],[['NT','0:58.42'],'—'],[[null,'0:58.42'],'—'],
+ [['0:58.42','0:58.42'],'—'],[['0:58.42','0:28.31'],'—'],
+ [['1:60.00','2:00.00'],'—'],[[28.31,'58.42'],'—']
+])assert.equal(f.run(`splitTime(${JSON.stringify(splits)},'subtractive')`),expected,JSON.stringify(splits));
+assert.equal(f.run("splitTime(['0:28.31','0:58.42'])"),'0:30.11');
+assert.equal(f.run("splitTime(['0:28.31','0:58.42'],'cumulative')"),'0:58.42');
+});
+for(const format of ['lanes','board','compact'])test(format+' switches split display without resetting windows or changing final times',()=>{
+const f=fixture(format),cfg=f.data.config;cfg.autoHide=false;cfg.splitModes={lanes:'cumulative',board:'cumulative',compact:'cumulative'};
+cfg.fields[format]={...cfg.fields.lanes,split:true,final:true};
+cfg.boardPhases=Object.fromEntries(['board','compact'].map(key=>[key,{splitFields:{...cfg.fields[format]},finishFields:{...cfg.fields[format]},finishHold:5}]));
+cfg.compact={showHeader:false,showResults:true,resultsX:0,resultsBottom:0,resultsWidth:320,rowHeight:32,initials:false};
+cfg.lanePhases.splitDuration=3;cfg.lanePhases.finishFields.split=true;
+const splits=['0:28.31','0:58.42'];f.data.state.feed.results={event:3,heat:2,lanes:{2:{splits}}};
+assert.match(f.render(),/0:58.42/);
+f.at(1,null);cfg.splitModes[format]='subtractive';assert.match(f.render(),/0:30.11/);
+assert.deepEqual(splits,['0:28.31','0:58.42']);
+// A correction to an earlier cumulative time updates subtraction without a new window.
+f.at(2);splits[0]='0:28.32';assert.match(f.render(),/0:30.10/);
+f.at(3);if(format==='lanes')assert.equal(f.render(),'');else assert.match(f.render(),/0:30.10/);
+// Retained split history supports a mode change even during a manager outage.
+f.at(4);f.data.state.feed.results.lanes[2].finalTime='1:00.00';assert.match(f.render(),/1:00.00/);
+f.data.state.feed.results=null;f.data.error='offline';cfg.splitModes[format]='cumulative';
+const html=f.render();assert.match(html,/0:58.42/);assert.match(html,/1:00.00/);
+for(const other of ['lanes','board','compact'].filter(key=>key!==format))assert.equal(cfg.splitModes[other],'cumulative');
+});
 for(const autoHide of [true,false])for(const clock of [null,'0:45.0'])test(`expired split never falls back to Start (autoHide=${autoHide}, clock=${clock})`,()=>{
 const f=fixture();f.data.config.autoHide=autoHide;f.data.config.lanePhases.splitDuration=2;
 assert.match(f.render(),/data-phase="start"/); // Start remains enabled with no duration limit.

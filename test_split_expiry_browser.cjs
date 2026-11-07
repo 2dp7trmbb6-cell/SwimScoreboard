@@ -58,7 +58,7 @@ const fs=require('node:fs');
    results.splits.push('0:58.42');
    await page.waitForFunction(()=>document.querySelector('.lane-output[data-lane="2"]')?.dataset.phase==='split');
    assert.notEqual(await lane.getAttribute('data-event'),signature);
-   assert.match(await lane.textContent(),/0:58.42/);
+   assert.match(await lane.textContent(),/0:30.11/);
    await page.waitForFunction(()=>!document.querySelector('.lane-output[data-lane="2"]'),{},{timeout:2500});
    results.finalTime='1:00.00';results.place=1;
    await page.waitForFunction(()=>document.querySelector('.lane-output[data-lane="2"]')?.dataset.phase==='finish');

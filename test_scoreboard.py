@@ -9,6 +9,25 @@ from http.server import ThreadingHTTPServer
 from server import State, Handler, defaults, project, lane_points
 
 class ScoreboardTests(unittest.TestCase):
+    def test_split_modes_defaults_migration_validation_and_persistence(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as d:
+            config=defaults();config.pop('splitModes')
+            Path(d,'settings.json').write_text(json.dumps(config))
+            state=State('unused',d)
+            self.assertEqual(state.config['splitModes'],dict(board='subtractive',compact='subtractive',lanes='subtractive'))
+            state.config['splitModes']['lanes']='cumulative';state.save(state.config)
+            restored=State('unused',d)
+            self.assertEqual(restored.config['splitModes'],dict(board='subtractive',compact='subtractive',lanes='cumulative'))
+            for modes in (None,[], 'subtractive', {},dict(board='cumulative',lanes='subtractive'),
+                          dict(board='cumulative',compact='cumulative',lanes='invalid'),
+                          dict(board='cumulative',compact='cumulative',lanes=True),
+                          dict(board='cumulative',compact='cumulative',lanes=['subtractive'])):
+                with self.subTest(modes=modes):
+                    invalid=defaults();invalid['splitModes']=modes
+                    with self.assertRaises(ValueError):state.save(invalid)
+            self.assertEqual(State('unused',d).config,restored.config)
+
     def test_configuration_validation_and_persistence(self):
         with tempfile.TemporaryDirectory() as d:
             state=State('http://127.0.0.1:8770',d)

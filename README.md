@@ -50,6 +50,17 @@ Start hiding is anchored to the first fresh, connected race-clock reading and th
 
 ## Timing availability and optional API extension
 
+### Cumulative or subtractive split display
+
+Under **Fields by race phase**, use **Split time display** to choose independently for Traditional, Condensed, and Pool lane overlays:
+
+- **Subtractive** (default): time since the previous reported split. Cumulative readings `0:28.31`, `0:58.42` display a latest split of `0:30.11`. The first split is unchanged.
+- **Cumulative**: elapsed time since race start, exactly as provided by the manager (`0:58.42` in that example).
+
+The choice applies wherever split fields are enabled, including finish cards. Final times stay cumulative. Changing the choice updates open overlays without restarting split windows. Earlier cumulative corrections update the subtraction; missing/invalid adjacent times or non-increasing values show `—` rather than an invented interval. The interval is between consecutive reported readings; no distance or missed touch is inferred. Existing settings without a split-mode choice adopt subtractive; explicit saved choices are preserved. Restart the scoreboard after updating, then refresh existing OBS Browser Sources once.
+
+`SMOKE_SCRIPT=test_split_modes_browser.cjs python browser_smoke.py` checks defaults, independent saved choices, live changes, corrections and final totals with disposable settings.
+
 **Legacy SwimDataManager versions do not expose seed, split, or lane final times.** These fields display `—` until the manager supplies them; the scoreboard never fabricates them. The companion manager update adds seed imports, local lane-result entry/API, and simulated results. Updated managers support the captured System 6 scoreboard mapping; other configurations still require validation. Relay entries display only the relay team name and A/B designation, when provided, in both layouts; leg swimmer names are omitted. The traditional table labels the entry column RELAY TEAM and omits a duplicate team column. The lane card also omits the duplicate team subtitle.
 
 The scoreboard can consume this optional API extension: swimmer `seedTime` as a display string; `feed.results` scoped to current event/heat:

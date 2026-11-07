@@ -34,9 +34,10 @@ def board_phase_defaults(fields):
     return dict(splitFields=dict(fields),finishFields=dict(fields),finishHold=5)
 
 def defaults():
-    return dict(boardPhases={f:board_phase_defaults(field_defaults()[f]) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(splitModes=dict(board='subtractive',compact='subtractive',lanes='subtractive'),boardPhases={f:board_phase_defaults(field_defaults()[f]) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
+    config.setdefault('splitModes',dict(board='subtractive',compact='subtractive',lanes='subtractive'))
     if 'board' not in config.get('fields',{}):
         legacy=config.get('fields',{})
         config['fields']=field_defaults()
@@ -115,6 +116,8 @@ class State:
         if any(type(config[k]) is not bool for k in ('visible','autoHide','finishPopups')): raise ValueError('Invalid visibility')
         if type(config['boardWidth']) is not int or not 640<=config['boardWidth']<=1760: raise ValueError('Traditional scoreboard width must be 640–1760 pixels')
         if set(config['fields']) != {'board','lanes','compact'}: raise ValueError('Invalid scoreboard fields')
+        modes=config['splitModes']
+        if not isinstance(modes,dict) or set(modes)!={'board','lanes','compact'} or any(v not in ('cumulative','subtractive') for v in modes.values()): raise ValueError('Split display must be cumulative or subtractive for each scoreboard')
         for format,fields in config['fields'].items():
             if not isinstance(fields,dict) or set(fields)!=set(field_defaults()[format]) or any(type(v) is not bool for v in fields.values()): raise ValueError('Invalid fields')
         pb=config['personalBestBoards']
