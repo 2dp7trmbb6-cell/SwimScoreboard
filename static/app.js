@@ -43,7 +43,8 @@ let boardPBSeen=new Set(),tableHistory={key:null,source:null,html:'',pending:nul
 let finishKey=null,heldFinishes=new Map(),heldSplits=new Map(),raceStarted=false,raceStartAt=null,heatSeenAt=null;
 function overlayPhase(lane,config,now){const o=phaseOptions(config),finish=heldFinishes.get(lane),split=heldSplits.get(lane);
 if(finish){const elapsed=(now-finish.seen)/1000-o.finishDelay;return config.finishPopups&&elapsed>=0&&(!o.finishDuration||elapsed<o.finishDuration)?'finish':null}
-if(split&&o.splitEnabled){const elapsed=(now-split.seen)/1000-o.splitDelay;if(elapsed>=0&&elapsed<o.splitDuration)return 'split'}
+// An observed split supersedes Start, even while delayed, disabled or expired.
+if(split){const elapsed=(now-split.seen)/1000-o.splitDelay;return o.splitEnabled&&elapsed>=0&&elapsed<o.splitDuration?'split':null}
 const elapsed=heatSeenAt===null?-1:(now-heatSeenAt)/1000-o.startDelay;
 return o.startEnabled&&elapsed>=0&&(!o.startDuration||elapsed<o.startDuration)&&(!config.autoHide||raceStartAt===null||(now-raceStartAt)/1000<o.startHideDelay)?'start':null;
 }
