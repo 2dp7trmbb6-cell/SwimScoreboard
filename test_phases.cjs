@@ -127,3 +127,31 @@ f.at(0,null);f.data.state.feed.results={event:3,heat:2,lanes:{2:{splits:['0:28.3
 assert.match(f.render(),/data-lane-slot="2" data-phase="split"/);
 f.at(100);const html=f.render();assert.match(html,/data-lane-slot="2" data-phase="split"/);assert.match(html,/0:28.31/);
 });
+
+for(const format of ['lanes','board','compact'])test(format+' retracts an explicitly corrected finish and allows the real finish',()=>{
+ const f=fixture(format),cfg=f.data.config;
+ cfg.fields[format]={...cfg.fields.lanes,final:true,split:true};
+ cfg.boardPhases=Object.fromEntries(['board','compact'].map(key=>[key,{splitFields:{...cfg.fields[format]},finishFields:{...cfg.fields[format]},finishHold:5}]));
+ cfg.compact={showHeader:false,showResults:true,resultsX:0,resultsBottom:0,resultsWidth:624,rowHeight:32,initials:false};
+ f.at(40.2,'0:40.2');
+ const results={event:3,heat:2,source:'serial',lanes:{2:{splits:['0:08.03'],finalTime:'0:40.15',place:1}}};
+ f.data.state.feed.results=results;
+ assert.match(f.render(),/data-phase="finish"/);
+ // Missing results/outages still hold finishes; absence alone is not correction.
+ f.data.state.feed.results=null;assert.match(f.render(),/data-phase="finish"/);
+ f.data.error='offline';assert.match(f.render(),/data-phase="finish"/);f.data.error=null;
+ f.data.state.feed.results=results;f.at(58.4,'0:58.4');
+ results.lanes[2]={splits:['0:08.03','0:40.15'],finalTime:null,place:null,finishRevision:1};
+ assert.doesNotMatch(f.render(),/data-phase="finish"/);
+ assert.match(f.render(),/data-phase="split"/);
+ assert.equal(f.run('heldFinishes.size'),0);
+ f.at(86.3,'1:26.3');results.lanes[2].finalTime='1:26.28';results.lanes[2].place=1;
+ assert.match(f.render(),/data-phase="finish"/);assert.match(f.render(),/1:26.28/);
+ assert.equal(f.run('heldFinishes.get("2").seen'),BASE+86300);
+});
+test('a missed correction poll still restarts the finish window using its revision',()=>{
+ const f=fixture();f.at(40.2,'0:40.2');
+ f.data.state.feed.results={event:3,heat:2,source:'replay',lanes:{2:{finalTime:'0:40.15',place:1}}};f.render();
+ f.at(86.3,'1:26.3');f.data.state.feed.results.lanes[2]={finalTime:'1:26.28',place:1,finishRevision:1};
+ assert.match(f.render(),/1:26.28/);assert.equal(f.run('heldFinishes.get("2").seen'),BASE+86300);
+});

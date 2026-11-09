@@ -170,3 +170,7 @@ Table phase visibility/delay/duration timers from the earlier controls are retir
 Validation: `SMOKE_SCRIPT=test_controls_browser.cjs python browser_smoke.py` exercises always-visible racing content before the first split, mixed finishes, retained finals, a five-second heat-change hold, mock previews, narrow timing columns, shared lane count and saved field selections.
 
 Personal Best controls for traditional and condensed scoreboards belong to **Fields by race phase → Finish / final result**. They never add a column to pre-race or racing-only tables.
+
+### Corrected false touches
+
+With an updated SwimDataManager, a console withdrawal of a finish increments the lane result's `finishRevision`. All three output formats discard that held finish and return the swimmer to racing; a later real finish starts a new finish window. The revision persists so this also works when a poll misses the intermediate withdrawal. Ordinary result gaps and manager outages continue to hold finishes. Both applications must be updated for automatic console corrections; an uncorrected false touch cannot reliably be distinguished from a real finish using the seed time alone.

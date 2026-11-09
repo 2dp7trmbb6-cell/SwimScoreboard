@@ -17,11 +17,17 @@ const manager=process.env.MANAGER_URL;
 const snapshot=await (await fetch(manager+'/api/v1/state')).json();
 await fetch(manager+'/api/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'source',mode:'off'})});
 // Source reset clears event/heat; use an injected browser snapshot to exercise the exact live rendering lifecycle.
-await overlay.route('**/api/state',async route=>{const d=await (await fetch(base+'/api/state')).json();d.state=snapshot;d.error=null;d.received=Date.now()/1000;d.state.feed.clockLast=d.received;d.state.feed.connected=true;d.state.feed.raceClock='0:12.3';d.state.feed.results={session:snapshot.active,event:3,heat:2,source:'manual',lanes:{2:{finalTime:'0:58.12',place:1}}};await route.fulfill({json:d})});
+let correctedResult={finalTime:'0:58.12',place:1};
+await overlay.route('**/api/state',async route=>{const d=await (await fetch(base+'/api/state')).json();d.state=snapshot;d.error=null;d.received=Date.now()/1000;d.state.feed.clockLast=d.received;d.state.feed.connected=true;d.state.feed.raceClock='0:12.3';d.state.feed.results={session:snapshot.active,event:3,heat:2,source:'manual',lanes:{2:correctedResult}};await route.fulfill({json:d})});
 await overlay.waitForSelector('.finish-card');assert.equal(await overlay.locator('.finish-number').textContent(),'1');
 assert.equal(await overlay.locator('.finish-card .lane-times').textContent(),'');
 assert.equal(await overlay.locator('.finish-card .lane-number').count(),0);
 const firstCard=await overlay.locator('.finish-card').elementHandle();await overlay.waitForTimeout(900);assert.equal(await firstCard.evaluate(el=>el.isConnected),true);
+correctedResult={splits:['0:58.12'],finalTime:null,place:null,finishRevision:1};
+await overlay.waitForFunction(()=>!document.querySelector('.finish-card'));
+correctedResult={splits:['0:58.12'],finalTime:'1:26.28',place:1,finishRevision:1};
+await overlay.waitForSelector('.finish-card');
+await overlay.waitForFunction(()=>document.querySelector('.finish-card')?.textContent.includes('1:26.28'));
 await overlay.unroute('**/api/state');
 await fetch(manager+'/api/manage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'source',mode:'demo',interval:600})});
 }
