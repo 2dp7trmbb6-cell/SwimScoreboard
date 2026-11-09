@@ -155,3 +155,36 @@ test('a missed correction poll still restarts the finish window using its revisi
  f.at(86.3,'1:26.3');f.data.state.feed.results.lanes[2]={finalTime:'1:26.28',place:1,finishRevision:1};
  assert.match(f.render(),/1:26.28/);assert.equal(f.run('heldFinishes.get("2").seen'),BASE+86300);
 });
+
+for(const format of ['lanes','board','compact'])test(format+' displays configured achievement images only for matching posted final standards',()=>{
+ const f=fixture(format),cfg=f.data.config,h=f.data.state.program.heats[0];
+ cfg.achievements={images:{personalBest:'/images/'+'a'.repeat(64)+'.png',standard:'/images/'+'b'.repeat(64)+'.png'},standardLabel:'NYS',standards:{lanes:true,board:true,compact:true}};
+ cfg.lanePhases.personalBest=true;cfg.personalBestBoards={board:true,compact:true};
+ cfg.fields[format]={...cfg.fields.lanes,final:true,split:true};
+ cfg.boardPhases=Object.fromEntries(['board','compact'].map(k=>[k,{splitFields:{...cfg.fields[format]},finishFields:{...cfg.fields[format]},finishHold:5}]));
+ cfg.compact={showHeader:false,showResults:true,resultsX:0,resultsBottom:0,resultsWidth:624,rowHeight:32,initials:false};
+ h.title='Girls 13 & Over 100 Yard Breaststroke';h.swimmers[0].age=16;h.swimmers[0].seedTime='1:30.00';
+ h.timeStandards=[{name:'NYS',time:'1:23.00',minAge:13,maxAge:14,gender:'F'},{name:'NYS',time:'1:20.50',minAge:15,maxAge:null,gender:'F'}];
+ assert.doesNotMatch(f.render(),/class="standard-badge"/);
+ f.at(80.5,'1:20.5');f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'1:20.50',place:1}}};
+ let html=f.render();assert.match(html,/class="standard-badge"/);assert.match(html,/NYS posted standard met/);assert.match(html,/\/images\/b{64}\.png/);assert.match(html,/\/images\/a{64}\.png/);
+ if(format==='lanes')assert.match(html,/two-awards/);else assert.ok(html.indexOf('standard-cell')<html.indexOf('pb-cell'));
+ f.data.state.feed.results.lanes[2].finalTime='1:20.51';assert.doesNotMatch(f.render(),/class="standard-badge"/);
+ h.swimmers[0].age=14;assert.match(f.render(),/class="standard-badge"/);
+ h.swimmers[0].gender='M';assert.doesNotMatch(f.render(),/class="standard-badge"/);h.swimmers[0].gender=null;
+ h.swimmers[0].age=null;assert.doesNotMatch(f.render(),/class="standard-badge"/);h.swimmers[0].age=14;
+ h.timeStandards.push({...h.timeStandards[0]});assert.doesNotMatch(f.render(),/class="standard-badge"/);h.timeStandards.pop();
+ cfg.achievements.standardLabel='OTHER';assert.doesNotMatch(f.render(),/class="standard-badge"/);cfg.achievements.standardLabel='NYS';
+ cfg.achievements.standards[format]=false;assert.doesNotMatch(f.render(),/class="standard-badge"/);cfg.achievements.standards[format]=true;
+ f.data.state.feed.results.lanes[2]={splits:['0:40.00'],finalTime:null,place:null,finishRevision:1};assert.doesNotMatch(f.render(),/class="standard-badge"/);
+ f.data.state.feed.results.lanes[2].finalTime='1:20.00';assert.match(f.render(),/class="standard-badge"/);
+ f.data.state.feed.results=null;f.data.error='offline';assert.match(f.render(),/class="standard-badge"/);
+ f.data.error=null;f.data.state.feed.heat=99;f.render();if(format!=='lanes')f.at(86.5,'1:26.5');assert.doesNotMatch(f.render(),/class="standard-badge"/);
+});
+test('mixed event standards require explicit swimmer gender and relays never claim individual awards',()=>{
+ const f=fixture();f.data.config.achievements={standardLabel:'NYS'};
+ const row={entries:[{age:10,gender:'F'}],relay:false,timeStandards:[{name:'NYS',time:'2:50.00',minAge:9,maxAge:10,gender:'F'},{name:'NYS',time:'2:55.00',minAge:9,maxAge:10,gender:'M'}]};
+ const check=()=>f.run(`matchedStandard(${JSON.stringify(row)},'2:52.00')`);
+ assert.equal(check(),null);row.entries[0].gender='M';assert.equal(check().time,'2:55.00');row.entries[0].gender=null;assert.equal(check(),null);
+ row.entries[0].gender='M';row.relay=true;assert.equal(check(),null);
+});

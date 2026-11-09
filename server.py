@@ -2,6 +2,9 @@
 import hashlib
 import argparse
 import json
+import re
+import struct
+import zlib
 import threading
 import time
 import urllib.request
@@ -10,7 +13,31 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).parent
-APP_VERSION=hashlib.sha256(b''.join((ROOT/'static'/name).read_bytes() for name in ('app.js','style.css','index.html','overlay.html','personal-best.png'))).hexdigest()[:12]
+APP_VERSION=hashlib.sha256(b''.join((ROOT/'static'/name).read_bytes() for name in ('app.js','style.css','index.html','overlay.html','personal-best.png','nys-2027.png'))).hexdigest()[:12]
+
+def achievement_defaults():
+    return dict(images=dict(personalBest='/personal-best.png',standard='/nys-2027.png'),
+                standardLabel='NYS',standards=dict(lanes=False,board=False,compact=False))
+
+def validate_png(body):
+    if not 33 <= len(body) <= 3*1024*1024 or body[:8] != b'\x89PNG\r\n\x1a\n':
+        raise ValueError('Choose a PNG image up to 3 MiB')
+    offset=8; dimensions=None; has_data=False
+    while offset+12<=len(body):
+        size=struct.unpack('>I',body[offset:offset+4])[0]
+        kind=body[offset+4:offset+8]; end=offset+8+size
+        if end+4>len(body) or zlib.crc32(body[offset+4:end])&0xffffffff != struct.unpack('>I',body[end:end+4])[0]:
+            raise ValueError('Invalid PNG image')
+        if dimensions is None:
+            if kind!=b'IHDR' or size!=13: raise ValueError('Invalid PNG header')
+            dimensions=struct.unpack('>II',body[offset+8:offset+16])
+            if any(not 1<=n<=4096 for n in dimensions): raise ValueError('PNG dimensions must be 1–4096 pixels')
+        if kind==b'IDAT': has_data=True
+        offset=end+4
+        if kind==b'IEND':
+            if size or offset!=len(body) or not has_data: raise ValueError('Invalid PNG ending')
+            return dimensions
+    raise ValueError('Incomplete PNG image')
 
 def config_revision(config):
     return hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()[:12]
@@ -34,9 +61,10 @@ def board_phase_defaults(fields):
     return dict(splitFields=dict(fields),finishFields=dict(fields),finishHold=5)
 
 def defaults():
-    return dict(splitModes=dict(board='subtractive',compact='subtractive',lanes='subtractive'),boardPhases={f:board_phase_defaults(field_defaults()[f]) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(achievements=achievement_defaults(),splitModes=dict(board='subtractive',compact='subtractive',lanes='subtractive'),boardPhases={f:board_phase_defaults(field_defaults()[f]) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
+    config.setdefault('achievements',achievement_defaults())
     config.setdefault('splitModes',dict(board='subtractive',compact='subtractive',lanes='subtractive'))
     if 'board' not in config.get('fields',{}):
         legacy=config.get('fields',{})
@@ -113,6 +141,16 @@ class State:
             return dict(appVersion=APP_VERSION,configRevision=config_revision(self.config),config=self.config, state=self.snapshot, received=self.received, error=self.error, now=time.time())
     def save(self, config):
         if set(config) != set(defaults()) or config['mode'] not in ('board','lanes','compact'): raise ValueError('Invalid configuration')
+        achievements=config['achievements']
+        if not isinstance(achievements,dict) or set(achievements)!=set(achievement_defaults()): raise ValueError('Invalid achievement settings')
+        if not isinstance(achievements['standardLabel'],str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9 _-]{0,31}',achievements['standardLabel']): raise ValueError('Standard label must be 1–32 letters, numbers, spaces, underscores or hyphens')
+        flags=achievements['standards']
+        if not isinstance(flags,dict) or set(flags)!={'lanes','board','compact'} or any(type(v) is not bool for v in flags.values()): raise ValueError('Invalid time-standard display options')
+        images=achievements['images']
+        if not isinstance(images,dict) or set(images)!={'personalBest','standard'}: raise ValueError('Invalid achievement images')
+        for value in images.values():
+            if not isinstance(value,str) or (value not in ('/personal-best.png','/nys-2027.png') and not re.fullmatch(r'/images/[a-f0-9]{64}\.png',value)): raise ValueError('Select an uploaded image or a default badge')
+            if value.startswith('/images/') and not (self.path.parent/'images'/value.rsplit('/',1)[1]).is_file(): raise ValueError('Uploaded image is missing; upload it again')
         if any(type(config[k]) is not bool for k in ('visible','autoHide','finishPopups')): raise ValueError('Invalid visibility')
         if type(config['boardWidth']) is not int or not 640<=config['boardWidth']<=1760: raise ValueError('Traditional scoreboard width must be 640–1760 pixels')
         if set(config['fields']) != {'board','lanes','compact'}: raise ValueError('Invalid scoreboard fields')
@@ -174,11 +212,23 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*a): pass
     def send(self,status,body,kind='application/json'):
         if kind=='application/json': body=json.dumps(body).encode()
+        if status==200 and kind=='image/png':
+            tag='"'+hashlib.sha256(body).hexdigest()+'"'
+            self.send_response(304 if self.headers.get('If-None-Match')==tag else 200)
+            self.send_header('ETag',tag)
+            self.send_header('Cache-Control','public, max-age=31536000, immutable' if urlsplit(self.path).path.startswith('/images/') else 'no-cache')
+            if self.headers.get('If-None-Match')==tag:
+                self.end_headers();return
+            self.send_header('Content-Type',kind);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
         self.send_response(status); self.send_header('Content-Type',kind); self.send_header('Cache-Control','no-store'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body)
     def do_GET(self):
         path=urlsplit(self.path).path
         if path=='/api/state': return self.send(200,self.server.state.get())
-        files={'/':'index.html','/overlay':'overlay.html','/app.js':'app.js','/style.css':'style.css','/personal-best.png':'personal-best.png'}
+        if re.fullmatch(r'/images/[a-f0-9]{64}\.png',path):
+            image=self.server.state.path.parent/'images'/path.rsplit('/',1)[1]
+            if not image.is_file(): return self.send(404,dict(error='Image not found'))
+            return self.send(200,image.read_bytes(),'image/png')
+        files={'/':'index.html','/overlay':'overlay.html','/app.js':'app.js','/style.css':'style.css','/personal-best.png':'personal-best.png','/nys-2027.png':'nys-2027.png'}
         if path not in files: return self.send(404,dict(error='Not found'))
         file=ROOT/'static'/files[path]
         kind={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png'}[file.suffix]
@@ -186,11 +236,21 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/app.js':body=body.replace(b'__APP_VERSION__',APP_VERSION.encode())
         self.send(200,body,kind)
     def do_POST(self):
-        if self.path!='/api/config': return self.send(404,dict(error='Not found'))
+        if self.path not in ('/api/config','/api/images'): return self.send(404,dict(error='Not found'))
         if self.client_address[0] not in ('127.0.0.1','::1'): return self.send(403,dict(error='Control this scoreboard on its own computer'))
         if self.headers.get('Origin') and urlsplit(self.headers['Origin']).netloc!=self.headers.get('Host'): return self.send(403,dict(error='Origin rejected'))
         try:
             size=int(self.headers.get('Content-Length',0))
+            if self.path=='/api/images':
+                if not 0<size<=3*1024*1024: raise ValueError('Choose a PNG image up to 3 MiB')
+                body=self.rfile.read(size);width,height=validate_png(body)
+                name=hashlib.sha256(body).hexdigest()+'.png'
+                folder=self.server.state.path.parent/'images';folder.mkdir(parents=True,exist_ok=True)
+                target=folder/name
+                with self.server.state.lock:
+                    if not target.exists():
+                        tmp=target.with_suffix('.tmp');tmp.write_bytes(body);tmp.replace(target)
+                return self.send(200,dict(url='/images/'+name,width=width,height=height))
             if not 0<size<50000: raise ValueError('Invalid request size')
             config=json.loads(self.rfile.read(size)); self.server.state.save(config); self.send(200,dict(ok=True,configRevision=config_revision(config)))
         except (ValueError,TypeError,KeyError,AttributeError) as e: self.send(400,dict(error=str(e)))

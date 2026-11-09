@@ -174,3 +174,22 @@ Personal Best controls for traditional and condensed scoreboards belong to **Fie
 ### Corrected false touches
 
 With an updated SwimDataManager, a console withdrawal of a finish increments the lane result's `finishRevision`. All three output formats discard that held finish and return the swimmer to racing; a later real finish starts a new finish window. The revision persists so this also works when a poll misses the intermediate withdrawal. Ordinary result gaps and manager outages continue to hold finishes. Both applications must be updated for automatic console corrections; an uncorrected false touch cannot reliably be distinguished from a real finish using the seed time alone.
+
+### NYS and Personal Best achievement images
+
+Open **Achievement images** in the dashboard to enable posted-standard images separately for lane, traditional and condensed outputs. The default standard label is **NYS**, with included transparent **NYS 2027** artwork. You can change the label to another standard printed in the program and upload matching artwork. Standards are opt-in; existing PB enable switches are unchanged.
+
+A final equal to or faster than the uniquely matching age/gender standard earns the image. Only posted standards from the matching event/heat are used. Individual events are supported; missing ages/genders or ambiguous groups produce no award. These are unofficial live comparisons, not verification of an official qualification. The default image's year is artwork, not a replacement for the program's published cutoff. Existing manager imports need **Update report** after upgrading SwimDataManager to recover standards.
+
+Upload independent PNGs for **Personal Best** and **Posted-standard** images. Each upload is stored under the scoreboard's ignored `data/images/`, persists with settings, and can be reset to its built-in default. Back up that directory along with `settings.json` when moving a scoreboard. External URLs and SVG uploads are not supported. Replacements apply to all output formats.
+
+Sizing guidance for both images:
+
+- Recommended **780 × 260 pixels (3:1)**, transparent PNG, bold text and about **8% safe padding**.
+- Maximum **3 MiB** and **4096 × 4096 pixels**. Other aspect ratios fit without cropping/stretching.
+- Lane artwork fits in **230 × 78 pixels before perspective**. When both awards apply, they stack in the same space at **230 × 36 pixels each**.
+- Table badges scale to their column, up to **48 pixels high**, or **40 pixels high** in condensed format. Keep small lettering readable.
+
+PB remains an unofficial final-versus-seed comparison; tying the seed does not earn PB. A posted standard *does* accept equality. Finish delays/durations and false-touch corrections apply to both images. A withdrawn finish removes the awards; a corrected time reevaluates them. The standard has its own table column before the existing last PB column.
+
+Validation: `python -m unittest -v`, `node test_render.cjs`, `node test_phases.cjs`, and `SMOKE_SCRIPT=test_achievements_browser.cjs python browser_smoke.py`. The browser check uses disposable fixtures and exercises uploads, persistence, both images together, age-specific qualification, corrections and every output format.

@@ -46,3 +46,17 @@ fieldset{min-width:0;margin:20px 0;padding:4px 14px 12px;border:1px solid #38617
 .board td.time-cell,.compact-results td.time-cell{font-size:var(--table-time-font);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:visible;text-overflow:clip;padding-left:6px;padding-right:6px;letter-spacing:0}
 
 .mock-config,.table-lifecycle{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}.mock-preview{height:240px;overflow:hidden;background:repeating-conic-gradient(#182932 0% 25%,#203640 0% 50%) 0 0/24px 24px;border:1px solid var(--line);border-radius:6px}.mock-config select{max-width:420px}.mock-output .board{left:0!important;top:0!important}.mock-output .board-head,.mock-output .board footer,.mock-output .compact-header,.mock-output #notice{display:none}.mock-output .compact-results{left:0!important;top:0!important;bottom:auto!important}
+/* Shared artwork fits without cropping; two lane achievements share one slot. */
+.achievement-settings{margin-top:24px;padding-top:20px;border-top:1px solid var(--line,#334155)}
+.achievement-image-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.achievement-preview{display:block;width:100%;height:90px;object-fit:contain;background:repeating-conic-gradient(#24384b 0% 25%,#172838 0% 50%) 50% / 16px 16px;border-radius:8px;margin-bottom:12px}
+.lane-achievements{flex:0 0 230px;width:230px;height:78px;display:flex;flex-direction:column;justify-content:center;gap:4px;pointer-events:none}
+.lane-achievements .personal-best,.lane-achievements .standard-badge{flex:0 0 auto;width:230px;height:78px}
+.lane-achievements.two-awards .personal-best,.lane-achievements.two-awards .standard-badge{height:36px}
+.standard-badge{position:relative;pointer-events:none;animation:personal-best-fly-in .65s cubic-bezier(.16,1,.3,1) both}
+.standard-badge img{display:block;width:100%;height:100%;object-fit:contain}
+.board-standard{display:block;width:100%;max-width:140px;margin:auto}
+.board-standard .standard-badge{height:48px;animation:none}
+.compact-results .board-standard .standard-badge{height:calc(var(--compact-row) - 6px);max-height:40px}
+@media(prefers-reduced-motion:reduce){.standard-badge{animation:none}}
+@media(max-width:700px){.achievement-image-grid{grid-template-columns:1fr}}
