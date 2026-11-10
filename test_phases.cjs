@@ -168,7 +168,7 @@ for(const format of ['lanes','board','compact'])test(format+' displays configure
  assert.doesNotMatch(f.render(),/class="standard-badge"/);
  f.at(80.5,'1:20.5');f.data.state.feed.results={event:3,heat:2,lanes:{2:{finalTime:'1:20.50',place:1}}};
  let html=f.render();assert.match(html,/class="standard-badge"/);assert.match(html,/NYS posted standard met/);assert.match(html,/\/images\/b{64}\.png/);assert.match(html,/\/images\/a{64}\.png/);
- if(format==='lanes')assert.match(html,/two-awards/);else assert.ok(html.indexOf('standard-cell')<html.indexOf('pb-cell'));
+ if(format==='lanes'||format==='compact')assert.match(html,/two-awards/);else assert.ok(html.indexOf('standard-cell')<html.indexOf('pb-cell'));
  f.data.state.feed.results.lanes[2].finalTime='1:20.51';assert.doesNotMatch(f.render(),/class="standard-badge"/);
  h.swimmers[0].age=14;assert.match(f.render(),/class="standard-badge"/);
  h.swimmers[0].gender='M';assert.doesNotMatch(f.render(),/class="standard-badge"/);h.swimmers[0].gender=null;

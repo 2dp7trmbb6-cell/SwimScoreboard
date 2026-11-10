@@ -60,3 +60,7 @@ fieldset{min-width:0;margin:20px 0;padding:4px 14px 12px;border:1px solid #38617
 .compact-results .board-standard .standard-badge{height:calc(var(--compact-row) - 6px);max-height:40px}
 @media(prefers-reduced-motion:reduce){.standard-badge{animation:none}}
 @media(max-width:700px){.achievement-image-grid{grid-template-columns:1fr}}
+/* Condensed outputs share one final column for both achievement types. */
+.compact-results .achievement-cell{padding:2px 5px}
+.compact-achievements{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;min-width:0}
+.compact-achievements>.board-standard,.compact-achievements>.board-pb{flex:1 1 0;min-width:0;margin:0}

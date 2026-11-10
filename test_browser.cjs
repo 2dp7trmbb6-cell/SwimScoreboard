@@ -20,7 +20,7 @@ await fetch(manager+'/api/manage',{method:'POST',headers:{'Content-Type':'applic
 let correctedResult={finalTime:'0:58.12',place:1};
 await overlay.route('**/api/state',async route=>{const d=await (await fetch(base+'/api/state')).json();d.state=snapshot;d.error=null;d.received=Date.now()/1000;d.state.feed.clockLast=d.received;d.state.feed.connected=true;d.state.feed.raceClock='0:12.3';d.state.feed.results={session:snapshot.active,event:3,heat:2,source:'manual',lanes:{2:correctedResult}};await route.fulfill({json:d})});
 await overlay.waitForSelector('.finish-card');assert.equal(await overlay.locator('.finish-number').textContent(),'1');
-assert.equal(await overlay.locator('.finish-card .lane-times').textContent(),'');
+assert.equal(await overlay.locator('.finish-card .lane-times').textContent(),'Lane 2');
 assert.equal(await overlay.locator('.finish-card .lane-number').count(),0);
 const firstCard=await overlay.locator('.finish-card').elementHandle();await overlay.waitForTimeout(900);assert.equal(await firstCard.evaluate(el=>el.isConnected),true);
 correctedResult={splits:['0:58.12'],finalTime:null,place:null,finishRevision:1};
@@ -37,7 +37,8 @@ await overlay.waitForFunction(()=>Math.round(document.querySelector('.board')?.g
 assert.ok(await overlay.locator('.board').evaluate(el=>el.scrollWidth<=el.clientWidth));
 await page.locator('#mode').selectOption('lanes');await page.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));await page.reload();await page.waitForSelector('#field-first');assert.equal(await page.locator('#field-first').isChecked(),false);assert.deepEqual(errors,[]);
 await page.locator('#alignmentMode').check();await page.locator('#usePool').check();
-await overlay.goto(base+'/overlay?format=lanes');await overlay.waitForFunction(()=>document.querySelectorAll('.alignment-card').length===8);
+await overlay.goto(base+'/overlay?format=lanes');await overlay.waitForFunction(()=>document.querySelectorAll('.alignment-card').length===6);
+await page.locator('#boardLaneCount').selectOption('8');await overlay.waitForFunction(()=>document.querySelectorAll('.alignment-card').length===8);
 await page.locator('#boardLaneCount').selectOption('6');await overlay.waitForFunction(()=>document.querySelectorAll('.alignment-card').length===6);
 const handle=page.locator('#alignmentCanvas [data-corner="0"]');await handle.scrollIntoViewIfNeeded();const box=await handle.boundingBox();
 const before=await page.locator('#corners input[data-point="0"][data-axis="0"]').inputValue();

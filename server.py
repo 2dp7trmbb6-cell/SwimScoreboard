@@ -17,7 +17,7 @@ APP_VERSION=hashlib.sha256(b''.join((ROOT/'static'/name).read_bytes() for name i
 
 def achievement_defaults():
     return dict(images=dict(personalBest='/personal-best.png',standard='/nys-2027.png'),
-                standardLabel='NYS',standards=dict(lanes=False,board=False,compact=False))
+                standardLabel='NYS',standards=dict(lanes=True,board=False,compact=True))
 
 def validate_png(body):
     if not 33 <= len(body) <= 3*1024*1024 or body[:8] != b'\x89PNG\r\n\x1a\n':
@@ -44,7 +44,7 @@ def config_revision(config):
 
 def field_defaults():
     return dict(board=dict(lane=True,first=True,last=True,team=True,seed=True,split=True,final=True,place=True),
-                lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=True),
+                lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=False),
                 compact=dict(lane=True,first=True,last=True,team=True,seed=False,split=True,final=True,place=False))
 
 def compact_defaults():
@@ -52,16 +52,18 @@ def compact_defaults():
 
 def lane_phase_defaults(start=None):
     start=dict(start or field_defaults()['lanes'])
-    return dict(splitFields=dict(start,seed=False,split=True,final=False,place=False),
-                finishFields=dict(start,lane=False,seed=False,split=False,final=True),
-                startEnabled=True,splitEnabled=True,startDelay=0,startDuration=0,startHideDelay=.5,
-                splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36,personalBest=False)
+    return dict(splitFields=dict(start,lane=False,seed=False,split=True,final=False,place=False),
+                finishFields=dict(start,lane=True,place=True,seed=False,split=False,final=True),
+                startEnabled=True,splitEnabled=True,startDelay=0,startDuration=0,startHideDelay=.25,
+                splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36,personalBest=True)
 
-def board_phase_defaults(fields):
-    return dict(splitFields=dict(fields),finishFields=dict(fields),finishHold=5)
+def board_phase_defaults(fields,format=None):
+    finish=dict(fields)
+    if format=='compact':finish.update(seed=True,split=False)
+    return dict(splitFields=dict(fields),finishFields=finish,finishHold=5)
 
 def defaults():
-    return dict(achievements=achievement_defaults(),splitModes=dict(board='subtractive',compact='subtractive',lanes='subtractive'),boardPhases={f:board_phase_defaults(field_defaults()[f]) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=False),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=8,reverse=False,position=.05,length=.35,height=.8),mode='board', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
+    return dict(achievements=achievement_defaults(),splitModes=dict(board='subtractive',compact='subtractive',lanes='subtractive'),boardPhases={f:board_phase_defaults(field_defaults()[f],f) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=True),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=6,reverse=False,position=.05,length=.35,height=.8),mode='compact', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
 
 def migrate(config):
     config.setdefault('achievements',achievement_defaults())

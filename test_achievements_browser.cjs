@@ -40,14 +40,15 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  for(const format of ['board','compact']){
   await control.locator('#mode').selectOption(format);await control.locator('#lanePhase').selectOption('finish');await control.locator('#pb-'+format).check();await control.locator('#standard-'+format).check();
   await control.waitForFunction(()=>document.querySelector('#saved').textContent.startsWith('Saved'));
-  const page=await context.newPage();await page.route('**/api/state',route);await page.goto(base+'/overlay?format='+format);await page.waitForSelector('.standard-cell .standard-badge');await page.waitForSelector('.pb-cell .personal-best');
-  assert.equal(await page.locator('thead th').last().textContent(),'PB / UNOFFICIAL');assert.equal(await page.locator('thead th').nth((await page.locator('thead th').count())-2).textContent(),'NYS');
+  const page=await context.newPage();await page.route('**/api/state',route);await page.goto(base+'/overlay?format='+format);const cell=format==='compact'?'.achievement-cell':'.standard-cell',pbCell=format==='compact'?'.achievement-cell':'.pb-cell';await page.waitForSelector(cell+' .standard-badge');await page.waitForSelector(pbCell+' .personal-best');
+  assert.equal(await page.locator('thead th').last().textContent(),format==='compact'?'PB / NYS':'PB / UNOFFICIAL');if(format==='board')assert.equal(await page.locator('thead th').nth((await page.locator('thead th').count())-2).textContent(),'NYS');else assert.equal(await page.locator('.standard-cell,.pb-cell').count(),0);
   assert.equal(await page.locator('.unused-lane .standard-badge').count(),0);
-  assert.equal(await page.locator('.standard-cell img').evaluate(async i=>{await i.decode();return i.naturalWidth>0}),true);
+  assert.equal(await page.locator(cell+' .standard-badge img').evaluate(async i=>{await i.decode();return i.naturalWidth>0}),true);
   await page.waitForTimeout(500); // Let the existing PB fly-in finish before measuring.
   assert.equal(await page.locator('table').evaluate(t=>[...t.querySelectorAll('img')].every(i=>{const r=i.getBoundingClientRect(),c=i.closest('td').getBoundingClientRect();return r.left>=c.left&&r.right<=c.right+.1})),true);
+  if(format==='compact')assert.equal(await page.locator('.achievement-cell .two-awards').evaluate(e=>{const a=e.querySelector('.standard-badge').getBoundingClientRect(),b=e.querySelector('.personal-best').getBoundingClientRect();return a.right<=b.left&&a.width>=60&&b.width>=60}),true);
   await page.screenshot({path:'/tmp/achievement-'+format+'.png',omitBackground:true});
-  await control.locator('#standard-'+format).uncheck();await page.waitForFunction(()=>!document.querySelector('.standard-cell'));assert.equal(await page.locator('.pb-cell .personal-best').count(),1);await page.close();
+  await control.locator('#standard-'+format).uncheck();await page.waitForFunction(()=>!document.querySelector('.standard-badge'));assert.equal(await page.locator(pbCell+' .personal-best').count(),1);await page.close();
  }
  assert.deepEqual(errors,[]);console.log('Achievement browser checks passed: default images, both awards, layout, uploads, persistence, invalid PNG, exact standard, corrections, reset and all formats.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

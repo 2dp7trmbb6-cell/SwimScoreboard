@@ -14,7 +14,7 @@ class AchievementTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             old=defaults();old.pop('achievements');Path(folder,'settings.json').write_text(json.dumps(old))
             state=State('unused',folder)
-            self.assertFalse(any(state.config['achievements']['standards'].values()))
+            self.assertEqual(state.config['achievements']['standards'],dict(lanes=True,board=False,compact=True))
             cfg=state.config;cfg['achievements']['standards']['lanes']=True;cfg['achievements']['standardLabel']='NYS'
             state.save(cfg);self.assertEqual(State('unused',folder).config,cfg)
             for key,value in [('standardLabel','<img>'),('standardLabel',''),('standards',{'lanes':True}),('images',{'personalBest':'https://example.org/a.png','standard':'/nys-2027.png'}),('images',{'personalBest':'/images/'+'a'*64+'.png','standard':'/nys-2027.png'})]:
