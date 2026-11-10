@@ -45,22 +45,24 @@ def config_revision(config):
 def field_defaults():
     return dict(board=dict(lane=True,first=True,last=True,team=True,seed=True,split=True,final=True,place=True),
                 lanes=dict(lane=True,first=True,last=True,team=True,seed=False,split=False,final=False,place=False),
-                compact=dict(lane=True,first=True,last=True,team=True,seed=False,split=True,final=True,place=False))
+                compact=dict(lane=True,first=True,last=True,team=True,seed=True,split=False,final=False,place=False))
 
 def compact_defaults():
-    return dict(headerX=880,headerY=16,headerWidth=1024,resultsX=1280,resultsBottom=16,resultsWidth=624,rowHeight=32,initials=True,showHeader=True,showResults=True)
+    return dict(headerX=880,headerY=16,headerWidth=1024,resultsX=1280,resultsBottom=16,resultsWidth=624,rowHeight=32,initials=True,showHeader=True,showResults=True,showStandards=True)
 
 def lane_phase_defaults(start=None):
     start=dict(start or field_defaults()['lanes'])
-    return dict(splitFields=dict(start,lane=False,seed=False,split=True,final=False,place=False),
-                finishFields=dict(start,lane=True,place=True,seed=False,split=False,final=True),
+    return dict(splitFields=dict(start,lane=True,seed=False,split=True,final=False,place=False),
+                finishFields=dict(start,lane=False,place=True,seed=False,split=False,final=True),
                 startEnabled=True,splitEnabled=True,startDelay=0,startDuration=0,startHideDelay=.25,
                 splitDelay=0,splitDuration=5,finishDelay=0,finishDuration=0,uprightTimes=True,timeSize=36,personalBest=True)
 
 def board_phase_defaults(fields,format=None):
-    finish=dict(fields)
-    if format=='compact':finish.update(seed=True,split=False)
-    return dict(splitFields=dict(fields),finishFields=finish,finishHold=5)
+    finish=dict(fields);split=dict(fields)
+    if format=='compact':
+        split['split']=True
+        finish.update(seed=True,split=False,final=True,place=True)
+    return dict(splitFields=split,finishFields=finish,finishHold=5)
 
 def defaults():
     return dict(achievements=achievement_defaults(),splitModes=dict(board='subtractive',compact='subtractive',lanes='subtractive'),boardPhases={f:board_phase_defaults(field_defaults()[f],f) for f in ('board','compact')},personalBestBoards=dict(board=False,compact=True),lanePhases=lane_phase_defaults(),compact=compact_defaults(),boardWidth=1760,alignment=dict(active=False,usePool=False,points=[[180,120],[1740,120],[1740,960],[180,960]],count=6,reverse=False,position=.05,length=.35,height=.8),mode='compact', visible=True, autoHide=True, finishPopups=True, fields=field_defaults(), lanes={str(i):dict(points=[[180,120+(i-1)*105],[900,120+(i-1)*105],[900,210+(i-1)*105],[180,210+(i-1)*105]], enabled=True,offsets=[[0,0] for _ in range(4)]) for i in range(1,9)})
@@ -77,6 +79,7 @@ def migrate(config):
     for format,options in config['boardPhases'].items():
         config['boardPhases'][format]={key:options.get(key,value) for key,value in board_phase_defaults(config['fields'][format]).items()}
     config.setdefault('compact',compact_defaults())
+    config['compact'].setdefault('showStandards',True)
     config.setdefault('lanePhases',lane_phase_defaults(config['fields']['lanes']))
     config['lanePhases'].setdefault('personalBest',False)
     config.setdefault('personalBestBoards',dict(board=False,compact=False))
@@ -183,7 +186,7 @@ class State:
             if type(options['finishHold']) not in (int,float) or not 5<=options['finishHold']<=600: raise ValueError('Finish hold must be 5–600 seconds')
         compact=config['compact']
         if not isinstance(compact,dict) or set(compact)!=set(compact_defaults()): raise ValueError('Invalid condensed layout')
-        for k in ('initials','showHeader','showResults'):
+        for k in ('initials','showHeader','showResults','showStandards'):
             if type(compact[k]) is not bool: raise ValueError('Invalid condensed display flag')
         for k in ('headerX','headerY','resultsX','resultsBottom','headerWidth','resultsWidth','rowHeight'):
             if type(compact[k]) is not int: raise ValueError('Condensed layout coordinates must be integers')

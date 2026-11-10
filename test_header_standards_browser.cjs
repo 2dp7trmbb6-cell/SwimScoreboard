@@ -1,0 +1,24 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
+ const context=await browser.newContext({viewport:{width:1920,height:1080}}),base=process.env.SCOREBOARD_URL,control=await context.newPage(),errors=[];
+ context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));await control.goto(base);await control.waitForSelector('#compact-showStandards');
+ assert.equal(await control.locator('#compact-showStandards').isChecked(),true);
+ let event=33;
+ const page=await context.newPage();await page.route('**/api/state',async route=>{const d=await(await fetch(base+'/api/state')).json(),now=Date.now()/1000;d.received=d.now=now;d.error=null;
+ d.state={active:'header-'+event,program:{name:'Header standards test',heats:[{event:33,heat:1,title:'Boys 13 & Over 50 Yard Freestyle',timeStandards:[{name:'NYS',time:'27.07',minAge:13,maxAge:14,gender:'M'},{name:'NYS',time:'24.50',minAge:15,maxAge:null,gender:'M'}],swimmers:[{lane:2,name:'Example, Swimmer',age:16,gender:'M',team:'TEAM',seedTime:'25.00'}]},{event:34,heat:1,title:'No posted standards',swimmers:[]}]},feed:{event,heat:1,connected:true,clockLast:now,raceClock:'0:24.5',results:{event,heat:1,lanes:{2:{finalTime:'24.50',place:1}}}}};await route.fulfill({json:d})});
+ await page.goto(base+'/overlay?format=compact');await page.waitForSelector('.compact-standards');
+ const text='NYS 13–14 M 27.07 · NYS 15+ M 24.50';assert.equal(await page.locator('.compact-standards').textContent(),text);
+ await page.waitForSelector('th.achievement-heading');assert.equal(await page.locator('th.achievement-heading').evaluate(e=>getComputedStyle(e).textAlign),'center');
+ assert.equal(await page.locator('.compact-title-row').evaluate(e=>{const a=e.querySelector('h2').getBoundingClientRect(),b=e.querySelector('.compact-standards').getBoundingClientRect();return a.right<=b.left&&Math.abs((a.top+a.bottom)-(b.top+b.bottom))<2}),true);
+ await page.waitForTimeout(500);await page.screenshot({path:'/tmp/compact-header-standards.png',omitBackground:true});
+ await control.locator('#standard-compact').uncheck();await page.waitForFunction(()=>!document.querySelector('.standard-badge'));assert.equal(await page.locator('.compact-standards').textContent(),text);
+ await control.locator('#compact-showStandards').uncheck();await page.waitForFunction(()=>!document.querySelector('.compact-standards'));
+ await control.reload();await control.waitForSelector('#compact-showStandards');assert.equal(await control.locator('#compact-showStandards').isChecked(),false);
+ await control.locator('#compact-showStandards').check();await page.waitForSelector('.compact-standards');
+ await control.getByText('Panel positions and sizes',{exact:true}).click();await control.locator('#compact-headerWidth').fill('320');await control.locator('#compact-headerWidth').dispatchEvent('change');
+ await page.waitForFunction(()=>document.querySelector('.compact-header').getBoundingClientRect().width<330);
+ assert.equal(await page.locator('.compact-title-row').evaluate(e=>{const a=e.querySelector('h2').getBoundingClientRect(),b=e.querySelector('.compact-standards').getBoundingClientRect(),p=e.closest('section').getBoundingClientRect();return a.right<=b.left&&b.right<=p.right&&e.scrollWidth<=e.clientWidth}),true);
+ assert.equal(await page.locator('.compact-standards').textContent(),text);
+ event=34;await page.waitForFunction(()=>document.querySelector('.compact-race h2').textContent==='No posted standards');assert.equal(await page.locator('.compact-standards').count(),0);
+ assert.deepEqual(errors,[]);console.log('Header standards browser checks passed: enabled default, current-event groups, same title row, centered achievement heading, independent toggle, persistence, narrow header and missing standards.');
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

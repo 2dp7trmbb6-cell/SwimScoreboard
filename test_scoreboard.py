@@ -98,7 +98,7 @@ class ScoreboardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             legacy=defaults();legacy.pop('compact');legacy['fields'].pop('compact');Path(d,'settings.json').write_text(json.dumps(legacy))
             state=State('unused',d);self.assertEqual(state.config['compact']['resultsWidth'],624)
-            self.assertTrue(state.config['fields']['compact']['split']);self.assertFalse(state.config['fields']['compact']['seed'])
+            self.assertFalse(state.config['fields']['compact']['split']);self.assertTrue(state.config['fields']['compact']['seed'])
             state.config['mode']='compact';state.config['compact']['headerX']=700;state.save(state.config)
             restored=State('unused',d);self.assertEqual(restored.config['mode'],'compact');self.assertEqual(restored.config['compact']['headerX'],700)
             for key,value in [('headerX',1900),('resultsWidth',1000),('rowHeight',1),('headerY',True),('initials','yes')]:
@@ -223,5 +223,20 @@ class ScoreboardTests(unittest.TestCase):
             finally:
                 state.stop.set();worker.join(3);hub.stop.set()
                 server.shutdown();server.server_close()
+
+
+    def test_condensed_header_standards_migrate_persist_and_validate(self):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            old=defaults();old['compact'].pop('showStandards');old['compact']['headerWidth']=700
+            Path(folder,'settings.json').write_text(json.dumps(old))
+            state=State('unused',folder)
+            self.assertTrue(state.config['compact']['showStandards'])
+            self.assertEqual(state.config['compact']['headerWidth'],700)
+            state.config['compact']['showStandards']=False;state.save(state.config)
+            self.assertFalse(State('unused',folder).config['compact']['showStandards'])
+            for value in (None,0,1,'true',[]):
+                invalid=defaults();invalid['compact']['showStandards']=value
+                with self.subTest(value=value),self.assertRaises(ValueError):state.save(invalid)
 
 if __name__=='__main__':unittest.main()

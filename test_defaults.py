@@ -7,6 +7,7 @@ from server import State, defaults
 class RequestedDefaultsTests(unittest.TestCase):
     def test_fresh_configuration_matches_requested_settings_and_saves(self):
         expected=json.loads((Path(__file__).parent/'testdata/requested-default-settings.json').read_text())
+        expected['compact']['showStandards']=True
         with tempfile.TemporaryDirectory() as folder:
             state=State('unused',folder)
             self.assertEqual(state.config,expected)
