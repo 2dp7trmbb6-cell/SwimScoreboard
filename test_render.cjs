@@ -50,13 +50,13 @@ test('condensed PB and standard badges share exactly one column with independent
  html=render();assert.doesNotMatch(html,/class="personal-best"|class="standard-badge"/);
 });
 
-test('condensed header lists posted achievement groups beside the event title, independently of badges',()=>{
+test('condensed header lists posted achievement groups with event/heat and clock, independently of badges',()=>{
  const a=app('compact'),d=sample(),h=d.state.program.heats[0];
  d.config.compact={showHeader:true,showResults:true,showStandards:true,headerX:880,headerY:16,headerWidth:1024,resultsX:1280,resultsBottom:16,resultsWidth:624,rowHeight:32,initials:true};
  d.config.fields.compact={...d.config.fields.board};
  h.title='Boys 13 & Over 50 Yard Freestyle';h.timeStandards=[{name:'NYS',time:'27.07',minAge:13,maxAge:14,gender:'M'},{name:'NYS',time:'24.50',minAge:15,maxAge:null,gender:'M'}];
  const render=()=>{a.run(`renderOutput(${JSON.stringify(d)})`);return a.nodes.broadcast.innerHTML};
- let html=render();assert.match(html,/class="compact-title-row"/);assert.match(html,/NYS 13–14 M 27.07 · NYS 15\+ M 24.50/);assert.match(html,/Boys 13 &amp; Over 50 Yard Freestyle/);
+ let html=render();assert.match(html,/<div class="compact-meta"><strong class="compact-event">[^]*?<span class="compact-standards"[^]*?<b class="compact-clock">/);assert.match(html,/NYS 13–14 M 27.07 · NYS 15\+ M 24.50/);assert.match(html,/Boys 13 &amp; Over 50 Yard Freestyle/);
  assert.doesNotMatch(html,/class="standard-badge"/);
  d.config.compact.showStandards=false;assert.doesNotMatch(render(),/class="compact-standards"/);d.config.compact.showStandards=true;
  h.timeStandards.push({...h.timeStandards[0]});assert.equal((a.run(`compactStandardText(${JSON.stringify(h)})`).match(/NYS 13–14/g)||[]).length,1);
